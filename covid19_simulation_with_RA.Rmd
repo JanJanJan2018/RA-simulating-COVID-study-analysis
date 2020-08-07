@@ -1,0 +1,535 @@
+---
+title: "covid19 study"
+author: "Janis Corona"
+date: "8/6/2020"
+output: html_document
+---
+
+This data was obtained from the National Center for Bioinformatics (NCBI) Gene Expression Omnibus (GEO) online data repository on COVID-19 data using a mixed group of patient who all have the autoimmune disease, Rheumatoid Arthritis (RA). Their blood was taken in a special extraction method to preserve the RNA, then treated with abatacept, the RA drug to control autoimmune response for RA patients. There were 76 samples of a week 0 and week 12 where week 0 is the control in 38 patients, and week 12 is the CD80/86 costimulation inhibitor of T cells that produce the same or similar pathological processes as COVID-19 does in patients' who suffer lung congestion till death in some cases. The access number for this data is GSE151161 and it can be (downloaded)[https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE151161] with the text metadata information shown immediately below and the RAW data values of gene expression. No need to add the platform information, because the RAW data has the gene name attached to the Raw RNA gene expression data. The data resource link: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE151161.
+
+Originally, I thought this was blood infected with COVID-19, but it isn't. It is blood that simulated the same disease process that kills the patient when the lungs and organs become congested with inflammation from the immune response. I wasn't able to get the fastq files that were on COVID-19 from a different study to align with a sequence alignment app to identify each gene. Although those files are really helpful if you know how to do that process already. This study did use STAR to align their fastq files, and attached the gene symbols to each sample's gene expression value. 
+
+Here is the original summary on NCBI's GEO briefly describing this study, and this is why I thought it was COVID-19 samples:
+
+__**"Series GSE151161		Query DataSets for GSE151161
+Status	Public on Jul 01, 2020
+Title	Blocking of the CD80/86 axis as a therapeutic approach to prevent progression to more severe forms of COVID-19
+Organism	Homo sapiens
+Experiment type	Expression profiling by high throughput sequencing
+Summary	In its more severe forms, COVID-19 progresses towards an excessive immune response, leading to the systemic overexpression of proinflammatory cytokines like IL6, mostly from the infected lungs. This cytokine storm can cause multiple organ damage and death. Consequently, there is a pressing need to identify therapies to treat and prevent severe symptoms during COVID-19. Based on previous clinical evidence, we hypothesized that inhibiting T cell co-stimulation by blocking CD80/86 could be an effective therapeutic strategy against progression to severe proinflammatory states. To support this hypothesis, we performed an analysis integrating blood transcriptional data we generated from rheumatoid arthritis patients treated with abatacept -a CD80/86 costimulation inhibitor- with the pathological features associated with COVID-19, particularly in its more severe forms. We have found that many of the biological processes that have been consistently associated with COVID-19 pathology are reversed by CD80/86 co-stimulation inhibition, including the downregulation of IL6 production. Also, analysis of previous transcriptional data from blood of SARS-CoVinfected patients showed that the response to abatacept has a very high level of antagonism to that elicited by COVID-19. Finally, analyzing a recent single cell RNA-seq dataset from bronchoalveolar lavage fluid cells from COVID-19 patients, we found a significant correlation along the main elements of the C80/86 axis: CD86+/80+ antigen presenting cells, activated CD4+ T cells and IL6 production. Our in-silico study provides additional support to the hypothesis that blocking of the CD80/CD86 signaling axis may be protective of the excessive proinflammatory state associated with COVID-19 in the lungs
+ 	
+Overall design	Whole RNAseq Blood Samples of patients treated with abatacept at week 0 and week 12"__**
+
+This first section pulls the data in from the commented text file of metadata information, arranges the demographic data to align with each of the RAW sample values.
+
+```{r}
+library(dplyr)
+source("geneCards.R")
+```
+
+
+```{r}
+info <- file('GSE151161_series_matrix.txt')
+info2 <- readLines(con=info, n=-1)#, encoding='utf-8')
+```
+
+
+```{r}
+#info2
+```
+
+```{r}
+Info <- info2[c(30:32,38:44)]
+Info
+```
+
+
+```{r}
+Info2 <- Info[c(2:3,6:8)]
+Info2
+```
+
+
+```{r}
+Info3 <- gsub('\\t',' ', Info2, perl=T)
+Info4 <- gsub('\\\"',' ',Info3, perl=T)
+Info5 <- gsub('[!]','',Info4)
+Info6 <- gsub('Sample_characteristics_ch1  ','',Info5)
+Info6a <- gsub('Sample_title  ','',Info6)
+Info6b <- gsub('Sample_geo_accession  ','',Info6a)
+Info7 <- trimws(Info6b,which='right', whitespace='[ ]')
+Info7
+```
+
+
+```{r}
+if (file.exists('patient.csv')){
+  file.remove('patient.csv')
+} 
+
+
+patient <- strsplit(Info7[1], split='   ')
+for (i in patient){
+  write.table(i,file='patient.csv',row.names=F,col.names=F)
+}
+```
+
+
+```{r}
+Patient <- read.csv('patient.csv', sep=',',header=F)
+colnames(Patient) <- 'patient'
+Patient
+```
+
+```{r}
+if (file.exists('sample.csv')){
+  file.remove('sample.csv')
+} 
+
+sample <- strsplit(Info7[2], split='   ')
+for (i in sample){
+  write.table(i,file='sample.csv',row.names=F,col.names=F)
+}
+```
+
+
+```{r}
+Sample <- read.csv('sample.csv', sep=',',header=F)
+colnames(Sample) <- 'sample'
+Sample
+```
+
+```{r}
+if (file.exists('age.csv')){
+  file.remove('age.csv')
+} 
+
+age <- strsplit(Info7[3],split='age: ')
+
+for (i in age){
+  write.table(i,file='age.csv',append=T, row.names=F, col.names = F)
+}
+```
+
+
+```{r}
+Age <- read.csv('age.csv', header=F, sep=',')
+colnames(Age) <- 'Age'
+Age
+```
+
+
+```{r}
+if (file.exists('gender.csv')){
+  file.remove('gender.csv')
+} 
+
+gender <- strsplit(Info7[4], split='gender: ')
+for (i in gender){
+  write.table(i,file='gender.csv',row.names=F, col.names=F)
+}
+```
+
+
+```{r}
+Gender= read.csv('gender.csv',sep=',',header=F)
+colnames(Gender) <- 'gender'
+Gender
+```
+
+
+```{r}
+if (file.exists('treatment.csv')){
+  file.remove('treatment.csv')
+} 
+
+treatment <- strsplit(Info7[5], split='treatment: ')
+for (i in treatment){
+  write.table(i,file='treatment.csv',row.names=F,col.names=F)
+}
+```
+
+
+```{r}
+Treatment <- read.csv('treatment.csv', sep=',',header=F)
+colnames(Treatment) <- 'treatment'
+Treatment
+```
+
+
+```{r}
+demographics <- cbind(Patient,Sample,Age,Gender,Treatment)
+demographics
+```
+
+
+```{r}
+data <- read.csv('GSE151161_Raw_counts.csv',sep=',', header=T, na.strings=c('',' ','NA'),
+                 stringsAsFactors = F)
+```
+
+
+```{r}
+colnames(data)[1] <- 'gene'
+colnames(data)
+```
+
+
+```{r}
+names <- as.data.frame(colnames(data)[2:77])
+colnames(names) <- 'sample'
+names
+```
+
+
+```{r}
+demographics$patient <- gsub('Patient ','P',demographics$patient)
+demographics$patient <- gsub(' week','_w',demographics$patient)
+demographics$patient <- as.factor(paste(demographics$patient))
+demographics$treatment <- as.character(demographics$treatment)
+demographics$treatment <- trimws(demographics$treatment, which='right', whitespace=' ')
+demographics$gender <- as.character(demographics$gender)
+demographics$gender <- trimws(demographics$gender, which='right', whitespace=' ')
+
+
+demographics$patient
+names$sample
+
+```
+
+
+
+```{r}
+write.csv(demographics,'demographics.csv',row.names=FALSE)
+
+```
+
+
+```{r}
+demographics
+
+```
+
+We can subset into control and treatment with our demographics data frame's treatment column.
+```{r}
+
+control <- subset(demographics, demographics$treatment =='control')
+abatacept <- subset(demographics, demographics$treatment=='abatacept')
+
+```
+
+There are 38 samples in each group of control or abatacept.
+
+Lets divide the groups into males and females.
+```{r}
+femaleControl <- subset(control, control$gender=='F')
+maleControl <- subset(control, control$gender=='M')
+femaleTreatment <- subset(abatacept, abatacept$gender=='F')
+maleTreatment <- subset(abatacept, abatacept$gender=='M')
+```
+
+There are 32 females and 6 males, totalling the number of samples in the control group and the treatment group because it was the same group of people's blood 12 weeks later. 
+
+
+```{r}
+controlList <- control$patient
+treatmentList <- abatacept$patient
+
+femaleControlList <- femaleControl$patient
+maleControlList <- maleControl$patient
+femaleTreatmentList <- femaleTreatment$patient
+maleTreatmentList <- maleTreatment$patient
+```
+
+
+```{r}
+gene <- data$gene
+
+control2 <- colnames(data) %in% controlList
+controlDF <- data[,control2]
+controlDF$gene <- gene
+
+abatacept2 <- colnames(data) %in% treatmentList
+treatmentDF <- data[,abatacept2]
+treatmentDF$gene <- gene
+
+femaleControlList2 <- colnames(controlDF) %in% femaleControlList
+femControlDF <- controlDF[,femaleControlList2]
+femControlDF$gene <- gene
+
+maleControlList2 <- colnames(controlDF) %in% maleControlList
+maleControlDF <- controlDF[,maleControlList2]
+maleControlDF$gene <- gene
+
+femaleTreatmentList2 <- colnames(treatmentDF) %in% femaleTreatmentList
+femTreatmentDF <- treatmentDF[,femaleTreatmentList2]
+femTreatmentDF$gene <- gene
+
+maleTreatmentList2 <- colnames(treatmentDF) %in% maleTreatmentList
+maleTreatmentDF <- treatmentDF[,maleTreatmentList2]
+maleTreatmentDF$gene <- gene
+
+
+
+```
+
+
+```{r}
+controlDF2 <- controlDF %>% group_by(gene) %>% summarise_at(vars('P1_w0':'P38_w0'),mean)
+treatmentDF2 <- treatmentDF %>% group_by(gene) %>% summarise_at(vars('P1_w12':'P38_w12'),mean)
+
+femTreatmentDF2 <- femTreatmentDF %>% group_by(gene) %>% summarise_at(vars('P1_w12':'P38_w12'),mean)
+maleTreatmentDF2 <- maleTreatmentDF %>% group_by(gene) %>%
+  summarise_at(vars('P24_w12':'P37_w12'),mean)
+
+femControlDF2 <- femControlDF %>% group_by(gene) %>% summarise_at(vars('P1_w0':'P38_w0'),mean)
+maleControlDF2 <- maleControlDF %>% group_by(gene) %>% summarise_at(vars('P24_w0':'P37_w0'),mean)
+
+
+```
+
+
+```{r}
+gene <- controlDF2$gene
+
+femControlDF3 <- femControlDF2[,-1]
+maleControlDF3 <- maleControlDF2[,-1]
+femTreatmentDF3 <- femTreatmentDF2[,-1]
+maleTreatmentDF3 <- maleTreatmentDF2[,-1]
+controlDF3 <- controlDF2[,-1]
+treatmentDF3 <- treatmentDF2[,-1]
+```
+
+```{r}
+controlDF3$ctrl_mean <- apply(controlDF3, 1,mean, na.rm=T)
+
+```
+
+```{r}
+treatmentDF3$trt_mean <- apply(treatmentDF3, 1,mean, na.rm=T)
+```
+
+```{r}
+femTreatmentDF3$fem_trt_mean <- apply(femTreatmentDF3, 1,mean, na.rm=T)
+```
+
+```{r}
+maleTreatmentDF3$mal_trt_mean <- apply(maleTreatmentDF3, 1,mean, na.rm=T)
+```
+
+```{r}
+femControlDF3$fem_ctrl_mean <- apply(femControlDF3, 1,mean, na.rm=T)
+```
+
+```{r}
+maleControlDF3$mal_ctrl_mean <- apply(maleControlDF3, 1,mean, na.rm=T)
+
+```
+
+
+```{r}
+DATA_RA <- cbind(controlDF3,treatmentDF3,maleControlDF3,femControlDF3,
+                 maleTreatmentDF3,femTreatmentDF3)
+DATA_RA$gene <- gene
+
+```
+
+
+```{r}
+colnames(DATA_RA)
+```
+
+
+```{r}
+DATA_RA2 <- DATA_RA[,c(159,1:38,40:77,79:84,86:117,119:124,126:157,39,78,85,118,125,158)]
+colnames(DATA_RA2)
+```
+
+
+```{r}
+DATA_RA2$trt_ctrl_FoldChange <- DATA_RA2$trt_mean/DATA_RA2$ctrl_mean
+DATA_RA2$fem_trt_ctrl_FoldChange <- DATA_RA2$fem_trt_mean/DATA_RA2$fem_ctrl_mean
+DATA_RA2$mal_trt_ctrl_FoldChange <- DATA_RA2$mal_trt_mean/DATA_RA2$mal_ctrl_mean
+
+DATA_RA2$fem_mal_trt_FoldChange <- DATA_RA2$fem_trt_mean/DATA_RA2$mal_trt_mean
+DATA_RA2$fem_mal_ctrl_FoldChange <- DATA_RA2$fem_ctrl_mean/DATA_RA2$mal_ctrl_mean
+
+```
+
+Lets add in age as well.
+```{r}
+
+quantile(demographics$Age)
+```
+
+Lets divide the data into those patients with RA who are younger than 50 and those older than 50.
+```{r}
+less50 <- subset(demographics,demographics$Age < 50)
+great50 <- subset(demographics,demographics$Age >=50)
+```
+
+
+```{r}
+gene <- controlDF$gene
+
+less50b <- less50$patient
+great50b <- great50$patient
+
+less50c <- colnames(controlDF) %in% less50b
+great50c <- colnames(controlDF) %in% great50b
+
+less50ctrlDF <- controlDF[,less50c]
+great50ctrlDF <- controlDF[,great50c]
+less50trtDF <- treatmentDF[,less50c]
+great50trtDF <- treatmentDF[,great50c]
+
+less50ctrlDF$gene <- gene
+less50trtDF$gene <- gene
+great50ctrlDF$gene <- gene
+great50trtDF$gene <- gene
+```
+
+
+```{r}
+less50ctrlDF2 <- less50ctrlDF %>% group_by(gene) %>% summarise_at(vars('P4_w0':'P36_w0'),mean)
+less50trtDF2 <- less50trtDF %>% group_by(gene) %>% summarise_at(vars('P4_w12':'P36_w12'),mean)
+great50ctrlDF2 <- great50ctrlDF %>% group_by(gene) %>% summarise_at(vars('P1_w0':'P38_w0'),mean)
+great50trtDF2 <- great50trtDF %>% group_by(gene) %>% summarise_at(vars('P1_w12':'P38_w12'),mean)
+
+```
+
+
+```{r}
+gene <- great50trtDF2$gene
+
+less50ctrlDF3 <- less50ctrlDF2[,-1]
+less50trtDF3 <- less50trtDF2[,-1]
+great50ctrlDF3 <- great50ctrlDF2[,-1]
+great50trtDF3 <- great50trtDF2[,-1]
+
+```
+
+
+```{r}
+less50ctrlDF3$less50_ctrl_mean <- apply(less50ctrlDF3,1,mean)
+less50trtDF3$less50_trt_mean <- apply(less50trtDF3,1,mean)
+great50ctrlDF3$great50_ctrl_mean <- apply(great50ctrlDF3,1,mean)
+great50trtDF3$great50_trt_mean <- apply(great50trtDF3,1,mean)
+
+```
+
+
+```{r}
+DATA_RA3 <- cbind(DATA_RA2, less50ctrlDF3, great50ctrlDF3, less50trtDF3,great50trtDF3)
+colnames(DATA_RA3)
+```
+
+
+```{r}
+DATA_RA4 <- DATA_RA3[,c(1:77,154:159,175,204,215,244,160:164)]
+colnames(DATA_RA4)
+```
+
+```{r}
+DATA_RA4$less50_trt_ctrl_FoldChange <- DATA_RA4$less50_trt_mean/DATA_RA4$less50_ctrl_mean
+DATA_RA4$great50_trt_ctrl_FoldChange <- DATA_RA4$great50_trt_mean/DATA_RA4$great50_ctrl_mean
+colnames(DATA_RA4)
+```
+
+```{r}
+DATA_RA4_FC <- DATA_RA4[,c(1,78:94)]
+write.csv(DATA_RA4, 'all_RA_FC.csv',row.names=FALSE)
+```
+
+```{r}
+DATA_RA4_FC$trt_ctrl_FoldChange <- ifelse(DATA_RA4_FC$trt_ctrl_FoldChange=='Inf',
+                                          DATA_RA4_FC$trt_mean,
+                                          ifelse(DATA_RA4_FC$trt_ctrl_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$trt_ctrl_FoldChange))
+DATA_RA4_FC$fem_trt_ctrl_FoldChange <- ifelse(DATA_RA4_FC$fem_trt_ctrl_FoldChange=='Inf',
+                                          DATA_RA4_FC$fem_trt_mean,
+                                          ifelse(DATA_RA4_FC$fem_trt_ctrl_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$fem_trt_ctrl_FoldChange))
+DATA_RA4_FC$mal_trt_ctrl_FoldChange <- ifelse(DATA_RA4_FC$mal_trt_ctrl_FoldChange=='Inf',
+                                          DATA_RA4_FC$mal_trt_mean,
+                                          ifelse(DATA_RA4_FC$mal_trt_ctrl_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$mal_trt_ctrl_FoldChange))
+DATA_RA4_FC$fem_mal_trt_FoldChange <- ifelse(DATA_RA4_FC$fem_mal_trt_FoldChange=='Inf',
+                                          DATA_RA4_FC$fem_trt_mean,
+                                          ifelse(DATA_RA4_FC$fem_mal_trt_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$fem_mal_trt_FoldChange))
+DATA_RA4_FC$fem_mal_ctrl_FoldChange <- ifelse(DATA_RA4_FC$fem_mal_ctrl_FoldChange=='Inf',
+                                          DATA_RA4_FC$fem_ctrl_mean,
+                                          ifelse(DATA_RA4_FC$fem_mal_ctrl_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$fem_mal_ctrl_FoldChange))
+DATA_RA4_FC$less50_trt_ctrl_FoldChange <- ifelse(DATA_RA4_FC$less50_trt_ctrl_FoldChange=='Inf',
+                                          DATA_RA4_FC$less50_trt_mean,
+                                          ifelse(DATA_RA4_FC$less50_trt_ctrl_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$less50_trt_ctrl_FoldChange))
+DATA_RA4_FC$great50_trt_ctrl_FoldChange <- ifelse(DATA_RA4_FC$great50_trt_ctrl_FoldChange=='Inf',
+                                          DATA_RA4_FC$great50_trt_mean,
+                                          ifelse(DATA_RA4_FC$great50_trt_ctrl_FoldChange=='NaN',
+                                                 0,
+                                                 DATA_RA4_FC$great50_trt_ctrl_FoldChange))
+
+```
+
+
+```{r}
+write.csv(DATA_RA4_FC,'RA_FCs.csv',row.names=FALSE)
+
+head(DATA_RA4_FC)
+```
+
+Lets get the highest and least expressed genes for 10 of each in fold change values for each group of:
+- younger than 50 treatment/control fold change
+- older than 50 treatment/control fold change
+- females to males control fold change
+- females to males treatment fold change
+- females treatment/control fold change
+- males treatment/contral fold change
+- treatment/control fold change for all participants
+
+```{r}
+treatControl <- DATA_RA4_FC[order(DATA_RA4_FC$trt_ctrl_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+
+young <- DATA_RA4_FC[order(DATA_RA4_FC$less50_trt_ctrl_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+old <- DATA_RA4_FC[order(DATA_RA4_FC$great50_trt_ctrl_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+
+fems <- DATA_RA4_FC[order(DATA_RA4_FC$fem_trt_ctrl_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+
+males <- DATA_RA4_FC[order(DATA_RA4_FC$mal_trt_ctrl_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+
+fems_males_trt <- DATA_RA4_FC[order(DATA_RA4_FC$fem_mal_trt_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+
+fems_males_ctrl <- DATA_RA4_FC[order(DATA_RA4_FC$fem_mal_trt_FoldChange,decreasing=T)[c(1:10,56627:56636)],]
+
+
+```
+
+
+```{r}
+write.csv(treatControl,'treatControl.csv', row.names=F)
+write.csv(young, 'young.csv', row.names=F)
+write.csv(old, 'old.csv', row.names=F)
+write.csv(fems,'fems.csv',row.names=F)
+write.csv(males, 'males.csv', row.names=F)
+write.csv(fems_males_trt,'fems_males_trt.csv',row.names=F)
+write.csv(fems_males_ctrl,'fems_males_ctrl.csv',row.names=F)
+```
+
+The above files are the:
+- treatment/control of all patients for ratio of week 12 to week 0 treated with abatacept in RA blood
+- younger than 50 year old patients mixed genders week12 to week0
+- older than 50 year old patients mixed genders week12 to week0
+- female patients mixed ages week12 to week0
+- male patients mixed ages week12 to week0
+- females to males mixed ages week12 ratios
+- females to males mixed ages week0 ratios
+

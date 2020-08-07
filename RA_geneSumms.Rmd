@@ -1,0 +1,247 @@
+---
+title: "RA gene summaries"
+author: "Janis Corona"
+date: "8/7/2020"
+output: html_document
+---
+
+We sourced our gene summaries earlier at the top of this script, make sure you have that script geneCards.R in this folder and the tables it reads into that script when using the getMeanMedian functions for the UL and Flu samples as data tables specific to those functions. We won't use it, but I want to add the gene summaries to these seven tables to upload into Tableau for some charting of those genes. Some genes aren't in this table, so we will take the immunity genes and serous fluid genes and RA genes and compare across all 7 subsets or groups. An http error is thrown when a gene is not listed in genecards.org. There are 56,636 genes in our table of genes.
+
+```{r}
+source("geneCards.R")
+```
+
+
+```{r}
+find25genes('immunity')
+```
+
+```{r}
+getProteinGenes('immunity')
+```
+
+```{r}
+top25immune <- read.csv('Top25immunitys.csv',sep=',',header=T,na.strings=c('',' ','NA'),stringsAsFactors = F)
+```
+
+
+```{r}
+find25genes('serous fluid')
+```
+
+```{r}
+getProteinGenes('serous fluid')
+```
+
+```{r}
+top25serous <- read.csv('Top25serous-fluids.csv',sep=',',header=T,na.strings=c('',' ','NA'),stringsAsFactors = F)
+```
+
+
+```{r}
+find25genes('Rheumatoid Arthritis')
+```
+
+```{r}
+getProteinGenes('Rheumatoid Arthritis')
+```
+
+```{r}
+top25RA <- read.csv("Top25rheumatoid-arthritiss.csv",sep=',',header=T,na.strings=c('',' ','NA'), stringsAsFactors = F)
+```
+
+
+
+
+```{r}
+getSummaries('TLR2','immunity')
+```
+
+```{r}
+getGeneSummaries('immunity')
+```
+
+Lets read in our large fold change table corrected for errors in division by zero, so that any numerator and denominator with zero in extracting the fold change from the treatment mean to control mean ratio will replace Inf with the treatment mean and NaN with zero. We did this in the previous script covid16_simulation_with_RA.Rmd.
+```{r}
+foldChangeData <- read.csv('RA_FCs.csv',sep=',',header=T, na.strings=c('',' ','NA'),
+                           stringsAsFactors = F)
+```
+
+Lets only get the treatment to control fold change of all patients to filter genes by and compare across samples after adding our gene summaries for those genes.
+```{r}
+FC <- foldChangeData[order(foldChangeData$trt_ctrl_FoldChange,decreasing=T)[c(0:25,56614:56638)],]
+FC$gene
+```
+
+There isn't a genecards.org gene for find25genes funtion entering the gene RP11-806O11.1 as if a protein. We will just use the immunity, serous fluid, and RA genes for these data fold change values.
+```{r}
+GenesImmRAserous <- rbind(top25immune,top25serous,top25RA)
+```
+
+```{r}
+for (i in GenesImmRAserous$proteinType){
+  getSummaries(i,'protein')
+}
+```
+
+```{r}
+getGeneSummaries('protein')
+```
+
+```{r}
+proteinSumms <- read.csv("proteinGeneSummaries_protein.csv")
+proteinSumms2 <- proteinSumms[!duplicated(proteinSumms$gene),-1]
+
+```
+
+```{r}
+immList <- top25immune$proteinType
+RAList <- top25RA$proteinType
+serousList <- top25serous
+
+Listed <- c(immList,RAList,serousList)
+
+
+```
+
+```{r}
+proteinSumms3 <- subset(proteinSumms2, proteinSumms2$gene %in% Listed)
+```
+
+```{r}
+genes <- GenesImmRAserous[,1:2]
+genes
+```
+
+```{r}
+pro4 <- merge(genes,proteinSumms3,by.x='proteinType',by.y='gene')
+```
+
+```{r}
+DATA <- merge(pro4,foldChangeData,by.x='proteinType',by.y='gene')
+DATA1 <- DATA[order(DATA$proteinType,DATA$proteinSearched),]
+row.names(DATA1)<- NULL
+```
+
+```{r}
+DATA1$Imm <- ifelse(DATA1$proteinSearched=='immunity',1,0)
+DATA1$RA <- ifelse(DATA1$proteinSearched=='rheumatoid-arthritis',1,0)
+DATA1$Ser <- ifelse(DATA1$proteinSearched=='serous-fluid',1,0)
+DATA1$leadImm <- lead(DATA1$Imm,1)
+DATA1$leadRA <- lead(DATA1$RA,1)
+DATA1$leadSer <- lead(DATA1$Ser,1)
+
+```
+
+```{r}
+DATA1$leadGene <- DATA1$proteinType
+DATA1$leadNextGene <- lead(DATA1$proteinType,1)
+DATA1$leadNext2Gene <- lead(DATA1$proteinType,2)
+
+```
+
+```{r}
+DATA1$all3 <- ifelse(DATA1$leadGene==DATA1$leadNextGene & DATA1$leadGene==DATA1$leadNext2Gene,1,0)
+
+DATA1$ImmRA <- ifelse(DATA1$leadGene==DATA1$leadNextGene & DATA1$Imm==1 & DATA1$leadRA==1,1,0)
+
+DATA1$ImmSer <- ifelse(DATA1$leadGene==DATA1$leadNextGene & DATA1$Imm==1 & DATA1$leadSer==1,1,0)
+
+
+DATA1$RAser <- ifelse(DATA1$leadGene == DATA1$leadNextGene & DATA1$RA==1 & DATA1$leadSer==1,1,0)
+```
+
+```{r}
+DATA1$classGene <- ifelse(DATA1$all3==1,'immune, RA, serous', 
+                          ifelse(DATA1$ImmRA==1,'immune & RA',
+                                 ifelse(DATA1$ImmSer==1,'immune & serous',
+                                        ifelse(DATA1$RAser==1,'RA & serous',
+                                               DATA1$proteinSearched)
+                                               )))
+DATA1$category <- ifelse(!is.na(DATA1$classGene), DATA1$classGene,DATA1$proteinSearched)
+DATA1$category
+```
+
+```{r}
+colnames(DATA1)
+```
+
+
+```{r}
+DATA2 <- DATA1[,c(1,38,3:23)]
+colnames(DATA2)
+```
+
+```{r}
+classA <- subset(DATA3, DATA3$category %in% "immune, RA, serous")
+classB <- subset(DATA3, DATA3$category %in% "immune & RA")
+ClassC <- subset(DATA3, DATA3$category %in% "RA & serous")
+ClassD <- subset(DATA3, DATA3$category %in% "immune & serous")
+
+```
+
+```{r}
+Alist <- classA$proteinType
+Blist <- classB$proteinType
+Clist <- ClassC$proteinType
+Dlist <- ClassD$proteinType
+```
+
+```{r}
+ListB <- Blist[!(Blist %in% Alist)]
+ListC <- Clist[!(Clist %in% Alist)]
+ListD <- Dlist[!(Dlist %in% Alist)]
+
+multiclassList <- c(Alist,ListB,ListC,ListD)
+multiclassList
+
+notmulti <- DATA3$proteinType[!(DATA3$proteinType %in% multiclassList)]
+notmulti
+
+```
+
+```{r}
+notMultiDF <- subset(DATA3, DATA3$proteinType %in% notmulti)
+MultiDF <- subset(DATA3, DATA3$proteinType %in% multiclassList)
+MultiDF1 <- MultiDF[-grep('-',MultiDF$category), ]
+
+MultiDF2 <- filter(MultiDF1, MultiDF1$proteinType %in% Alist)
+MultiDF2$category <- 'immune,RA,serous'
+MultiDF3 <- MultiDF2[!duplicated(MultiDF2),]
+
+double <- filter(MultiDF1, !(MultiDF1$proteinType %in% Alist))
+
+Multi <- rbind(MultiDF3,double)
+row.names(Multi) <- NULL
+row.names(notMultiDF) <- NULL
+
+uniqueCat <- rbind(Multi,notMultiDF)
+uniqueCat$proteinType
+unique(uniqueCat$proteinType)
+```
+
+```{r}
+write.csv(uniqueCat,'uniqueCategories.csv',row.names=F)
+```
+
+```{r}
+rounded <- round(uniqueCat[,7:23],2)
+```
+
+```{r}
+UCategories <- cbind(uniqueCat[1:6],rounded)
+write.csv(UCategories,'Ucategories.csv',row.names=F)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
