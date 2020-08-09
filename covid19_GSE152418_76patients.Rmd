@@ -1,0 +1,260 @@
+---
+title: "covid19 study"
+author: "Janis Corona"
+date: "8/6/2020"
+output: html_document
+---
+
+The access number for this data is GSE151161 and it can be (downloaded)[https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418] with the text metadata information shown immediately below and the RAW data values of gene expression. No need to add the platform information, because the RAW data has the gene name attached to the Raw RNA gene expression data. The data resource link: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418.
+
+This is Peripheral Blood Mononuclear Cells with a (wikipedia)[en.wikipedia.org/wiki/Peripheral_blood_mononuclear_cell] definition:" A peripheral blood mononuclear cell (PBMC) is any peripheral blood cell having a round nucleus. These cells consist of lymphocytes (T cells, B cells, NK cells) and monocytes, whereas erythrocytes and platelets have no nuclei, and granulocytes (neutrophils, basophils, and eosinophils) have multi-lobed nuclei."
+
+National Center for Bioinformatics Information (NCBI) study summary:
+  "Series GSE152418		Query DataSets for GSE152418
+  Status	Public on Jul 31, 2020
+  Title	Systems biological assessment of immunity to severe and mild COVID-19 infections
+  Organism	Homo sapiens
+  Experiment type	Expression profiling by high throughput sequencing
+  Summary	The recent emergence of COVID-19 presents a major global crisis. Profound knowledge gaps remain about the interaction between the virus and the immune system. Here, we used a systems biology approach to analyze immune responses in 76 COVID-19 patients and 69 age and sex- matched controls, from Hong Kong and Atlanta. Mass cytometry revealed prolonged plasmablast and effector T cell responses, reduced myeloid expression of HLA-DR and inhibition of mTOR signaling in plasmacytoid DCs (pDCs) during infection. Production of pro-inflammatory cytokines plasma levels of inflammatory mediators, including EN-RAGE, TNFSF14, and Oncostatin-M, which correlated with disease severity, and increased bacterial DNA and endotoxin in plasma in and reduced HLA-DR and CD86 but enhanced EN-RAGE expression in myeloid cells in severe transient expression of IFN stimulated genes in moderate infections, consistent with transcriptomic analysis of bulk PBMCs, that correlated with transient and low levels of plasma COVID-19.
+ 	
+  Overall design	RNAseq analysis of PBMCs in a group of 17 COVID-19 subjects and 17 healthy controls"
+ 	
+
+
+
+```{r}
+library(dplyr)
+source("geneCards.R")
+```
+
+I manually copied and pasted the header information for each sample in the following table. It gives the age, if healthy, mild, severe, ICU, and one convalescent category for COVID-19 sampled patients, as well as gender and age and Atlanta, GA as the location.
+```{r}
+infoHeader <- read.csv('header.csv', sep=',', header=T,na.strings=c('',' ','NA'),
+                       stringsAsFactors = F)
+colnames(infoHeader)
+```
+
+```{r}
+row.names(infoHeader) <- infoHeader$X
+infoHeader <- infoHeader[,-26]
+infoHeader
+```
+
+The first sample has a class that doesn't fit this data of healthy or one of three stages of COVID-19. Lets see all the unique classes of disease states.
+```{r}
+tHeader <- as.data.frame(t(infoHeader))
+head(tHeader)
+```
+
+```{r}
+write.csv(tHeader,'tHeader.csv', row.names=T)
+tHeader <- read.csv('tHeader.csv',sep=',',header=T,row.names = 1, stringsAsFactors = F)
+tHeader$gender <- trimws(tHeader$gender,which='left',whitespace=' ')
+tHeader$geographicLocation <- trimws(tHeader$geographicLocation,which='left',whitespace=' ')
+tHeader$diseaseState <- trimws(tHeader$diseaseState,which='left',whitespace=' ')
+tHeader$severity <- trimws(tHeader$severity,which='left',whitespace=' ')
+tHeader$cellType <- trimws(tHeader$cellType,which='left',whitespace=' ')
+
+unique(tHeader$severity)
+```
+
+Lets divide this into subgroups based on severity except for the convalescent class. Maybe we can set this aside, and see if we can determine what class it is based on our results in the end of how certain genes we find behave in these other classes of Moderate, Severe, ICU, or Healthy.
+```{r}
+
+moderate <- subset(tHeader, tHeader$severity=='Moderate')
+severe <- subset(tHeader, tHeader$severity=='Severe')
+ICU <- subset(tHeader, tHeader$severity=='ICU')
+healthy <- subset(tHeader, tHeader$severity=='Healthy')
+write.csv(tHeader,'tHeader.csv', row.names=T)
+
+```
+
+
+```{r}
+info <- read.delim('GSE152418_p20047_Study1_RawCounts.txt',sep='\t',header=T,
+                   na.strings=c('',' ','NA'), stringsAsFactors = F)
+head(info)
+```
+
+```{r}
+moderateList <- moderate$sampleID
+severeList <- severe$sampleID
+ICUlist <- ICU$sampleID
+healthyList <- healthy$sampleID
+
+moderateList
+severeList
+ICUlist
+healthyList
+```
+
+
+```{r}
+moderateList2 <- gsub('-','.',moderateList)
+moderateDF <- info[,colnames(info) %in% moderateList2]
+severeList2 <- gsub('-','.',severeList)
+severeDF <- info[,colnames(info) %in% severeList2]
+ICUlist2 <- gsub('-','.',ICUlist)
+ICUdf <- info[,colnames(info) %in% ICUlist2]
+healthyDF <- info[,colnames(info) %in% healthyList]
+convalescentDF <- info[,1:2]
+```
+
+
+```{r}
+colnames(convalescentDF)[2] <- 'convalescent'
+row.names(convalescentDF) <- convalescentDF$ENSEMBLID
+colnames(moderateDF) <- c('moderate1','moderate2','moderate3','moderate4')
+row.names(moderateDF) <- row.names(convalescentDF)
+colnames(severeDF) <- c('severe1','severe2','severe3','severe4','severe5','severe6','severe7',
+                        'severe8')
+row.names(severeDF) <- row.names(convalescentDF)
+colnames(ICUdf) <- c('ICU1','ICU2','ICU3','ICU4')
+row.names(ICUdf) <- row.names(convalescentDF)
+colnames(healthyDF) <- c('healthy1','healthy2','healthy3','healthy4','healthy5','healthy6',
+                         'healthy7','healthy8','healthy9','healthy10','healthy11','healthy12',
+                         'healthy13','healthy14','healthy15','healthy16','healthy17')
+row.names(healthyDF) <- row.names(convalescentDF)
+```
+
+Lets get the gene means of each data set.
+```{r}
+moderateDF$moderate_mean <- apply(moderateDF,1,mean)
+severeDF$severe_mean <- apply(severeDF,1,mean)
+ICUdf$ICU_mean <- apply(ICUdf,1,mean)
+healthyDF$healthy_mean <- apply(healthyDF,1,mean)
+
+
+```
+
+Now combine all the data frames.
+```{r}
+dataMeans <- cbind(convalescentDF,healthyDF,moderateDF,severeDF,ICUdf)
+DATA <- dataMeans[,c(1:19,21:24,26:33,35:38,20,25,34,39)]
+colnames(DATA)
+```
+
+Lets get the fold change ratios of the means of the moderate, severe, and ICU to the healthy means.
+```{r}
+DATA$mod_health_foldChange <- DATA$moderate_mean/DATA$healthy_mean
+DATA$sevr_health_foldChange <- DATA$severe_mean/DATA$healthy_mean
+DATA$ICU_health_foldChange <- DATA$ICU_mean/DATA$healthy_mean
+
+```
+
+We only want the change, from diseased state to healthy state, and when using division by zero, we will get Inf if the numerator is not zero but the denominator is zero, and NaN when both are zero. To handle this if the numerator is not zero and the denominator is, then the change is the numerator, and if they are both zero, then there is no change, hence zero change will be a 1 because there is no change in over or under expression. My previous use of this was errored, I will go back and fix this mistake, because having a fold change value of 0 actually means the gene had a decrease of 100% or halved, because and increase of 100% is a fold change of 2 and hence doubled. We will write these in with conditions using ifelse.
+```{r}
+DATA$mod_health_foldChange <- ifelse(DATA$mod_health_foldChange=='Inf',
+                                          DATA$moderate_mean,
+                                          ifelse(DATA$mod_health_foldChange=='NaN',
+                                                 1,
+                                                 DATA$mod_health_foldChange))
+DATA$sevr_health_foldChange <- ifelse(DATA$sevr_health_foldChange=='Inf',
+                                      DATA$severe_mean,
+                                      ifelse(DATA$sevr_health_foldChange=='NaN',
+                                             1,
+                                             DATA$sevr_health_foldChange))
+DATA$ICU_health_foldChange <- ifelse(DATA$ICU_health_foldChange=='Inf',
+                                     DATA$ICU_mean,
+                                     ifelse(DATA$ICU_health_foldChange=='NaN',
+                                            1,
+                                            DATA$ICU_health_foldChange))
+```
+
+
+```{r}
+write.csv(DATA,'DATA_FCs_GSE152418.csv',row.names=F)
+```
+
+Lets select some genes based on the highest and lowest fold change values. Since we put in the values, our fold change values of zero are significant for those genes that halved. Even smaller values of zero would mean a more significant down regulation. i.e. 0.0 versus 0.001, where the decline in gene expression went from a decrease of 10% versus a decrease of 1000% or 10 times the decrease in the disease state to the healthy state.
+```{r}
+DATA1 <- DATA[order(DATA$ICU_health_foldChange,decreasing=T)[c(1:50,60634:60683)],]
+dim(DATA1)
+```
+
+
+```{r}
+write.csv(DATA1,'DATA_100genes.csv',row.names=F)
+```
+
+
+```{r}
+for (i in DATA1$ENSEMBLID){  
+  find25genes(i)
+}
+```
+
+```{r}
+files <- list.files('./gene scrapes')[1:100]
+files
+```
+
+```{r}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='DATA1genes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+
+
+```{r}
+DATA1genes <- read.delim('DATA1genes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+DATA1genes$V2 <- toupper(DATA1genes$V2)
+colnames(DATA1genes) <- c('gene','EnsebleGene','DateSourced')
+```
+
+
+```{r}
+for (i in DATA1genes$gene){
+  getSummaries(i,'PBMC')
+}
+```
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
