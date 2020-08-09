@@ -179,6 +179,7 @@ write.csv(DATA1,'DATA_100genes.csv',row.names=F)
 
 
 ```{r}
+source('geneCards2.R')
 for (i in DATA1$ENSEMBLID){  
   find25genes(i)
 }
@@ -202,7 +203,7 @@ for (i in files){
 ```{r}
 DATA1genes <- read.delim('DATA1genes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
 DATA1genes$V2 <- toupper(DATA1genes$V2)
-colnames(DATA1genes) <- c('gene','EnsebleGene','DateSourced')
+colnames(DATA1genes) <- c('gene','EnsemblGene','DateSourced')
 ```
 
 
@@ -214,8 +215,482 @@ for (i in DATA1genes$gene){
 
 
 ```{r}
+getGeneSummaries('PBMC')
+
+```
 
 
+```{r}
+pbmcSumms <- read.csv("proteinGeneSummaries_pbmc.csv")
+```
+
+
+```{r}
+head(pbmcSumms)
+```
+
+
+```{r}
+pbmcSumms2 <- pbmcSumms[,c(2:5)]
+```
+
+
+```{r}
+DATA1genes2 <- DATA1genes[,c(1:2)]
+```
+
+
+```{r}
+pbmcSummaries <- merge(DATA1genes2,pbmcSumms2,by.x='gene',by.y='gene')
+head(pbmcSummaries)
+```
+
+
+```{r}
+DATA1_Summs <- merge(pbmcSummaries,DATA1,by.x='EnsemblGene','ENSEMBLID')
+```
+
+
+```{r}
+write.csv(DATA1_Summs,'DATA_100FCs_summaries.csv',row.names=F)
+```
+
+We can further divide these groups into females versus males, and age by splitting by the median age.
+```{r}
+quantile(tHeader$age,.5)
+sort(tHeader$age)
+```
+
+The median age is 56 in this data of COVID patients. 
+```{r}
+moderateAgeList <- tHeader$age[tHeader$sampleID %in% moderateList]
+sort(moderateAgeList)
+```
+
+
+```{r}
+severeAgeList <- tHeader$age[tHeader$sampleID %in% severeList]
+sort(severeAgeList)
+```
+
+```{r}
+ICUageList <- tHeader$age[tHeader$sampleID %in% ICUlist]
+sort(ICUageList)
+```
+
+```{r}
+healthyAgeList <- tHeader$age[tHeader$sampleID %in% healthyList]
+sort(healthyAgeList)
+```
+
+If we split by less than or at 56 years of age on all data sets, we have data that is almost balanced between the two categories of older than 56 or 56 and younger patients.
+
+For gender, lets see if the class balance is distributed almost equally.
+```{r}
+moderateGenderList <- tHeader$gender[tHeader$sampleID %in% moderateList]
+sort(moderateGenderList)
+```
+
+```{r}
+severeGenderList <- tHeader$gender[tHeader$sampleID %in% severeList]
+sort(severeGenderList)
+```
+
+
+```{r}
+ICUgenderList <- tHeader$gender[tHeader$sampleID %in% ICUlist]
+sort(ICUgenderList)
+```
+
+
+```{r}
+healthyGenderList <- tHeader$gender[tHeader$sampleID %in% healthyList]
+sort(healthyGenderList)
+```
+
+
+When creating divisions by gender, the moderate class of patients is all females, so we wouldn't get any male data from that category of COVID-19 class, but the divisions by gender are almost equal for the other categories of healthy, ICU, and severe.
+
+Determining what genes are behaving differently when controlling for gender and age could add some useful information of how well aging and gender handle COVID-19 and body reactions. 
+
+The age will be split by those older than 56 and those younger than 57. And the genders will be split by those female and males only in the severe, ICU, and healthy data sets, as the moderate data set is entirely females.
+
+```{r}
+moderateList
+```
+
+```{r}
+tHeader[tHeader$sampleID %in% moderateList,]
+```
+
+Moderate by age younger than 57 and older than 56.
+```{r}
+mod56 <- moderateDF[,2:4]
+mod57 <- moderateDF[,1]
+
+```
+
+severe by age younger than 57 and older than 56.
+```{r}
+tHeader[tHeader$sampleID %in% severeList,]
+severe56 <- severeDF[,c(1,5:7)]
+severe57 <- severeDF[,c(2:4,8)]
+```
+
+ICU by age younger than 57 and older than 56.
+```{r}
+tHeader[tHeader$sampleID %in% ICUlist,]
+ICU56 <- ICUdf[,c(3,4)]
+ICU57 <- ICUdf[,c(1,2)]
+```
+
+healthy by age younger than 57 and older than 56.
+```{r}
+tHeader[tHeader$sampleID %in% healthyList,]
+healthy56 <- healthyDF[, c(1,5,8:10,12:15)]
+healthy57 <- healthyDF[,c(2:4,6,7,11,16,17)]
+```
+
+Lets get the means of each data frame on age in the four health cases.
+```{r}
+mod56$mod56_mean <- apply(mod56,1,mean)
+mod57a <- as.data.frame(mod57)
+colnames(mod57a) <- 'moderate1' #this is a vector of only 1 dimension
+mod57b <- as.data.frame(mod57)
+colnames(mod57b) <- 'mod57_mean'
+mod57c <- cbind(mod57a,mod57b)
+severe56$severe56_mean <- apply(severe56,1,mean)
+severe57$severe57_mean <- apply(severe57,1,mean)
+ICU56$ICU56_mean <- apply(ICU56,1,mean)
+ICU57$ICU57_mean <- apply(ICU57,1,mean)
+healthy56$healthy56_mean <- apply(healthy56,1,mean)
+healthy57$healthy57_mean <- apply(healthy57,1,mean)
+
+ageMeans <- cbind(mod56,mod57c,severe56,severe57,ICU56,ICU57,healthy56,healthy57)
+
+ageMeans2 <- ageMeans[,c(4,6,11,16,19,22,32,41)]
+ageMeans2$gene <- row.names(ageMeans2)
+ageMeans3 <- ageMeans2[,c(9,1:8)]
+colnames(ageMeans3)
+
+```
+
+
+```{r}
+ageMeans3$ICU_56_FoldChange <- ageMeans3$ICU56_mean/ageMeans3$healthy56_mean
+ageMeans3$ICU_57_FoldChange <- ageMeans3$ICU57_mean/ageMeans3$healthy57_mean
+ageMeans3$severe_56_FoldChange <- ageMeans3$severe56_mean/ageMeans3$healthy56_mean
+ageMeans3$severe_57_FoldChange <- ageMeans3$severe57_mean/ageMeans3$healthy57_mean
+ageMeans3$moderate_56_FoldChange <- ageMeans3$mod56_mean/ageMeans3$healthy56_mean
+ageMeans3$moderate_57_FoldChange <- ageMeans3$mod57_mean/ageMeans3$healthy57_mean
+```
+
+```{r}
+ageMeans3$ICU_56_FoldChange <- ifelse(ageMeans3$ICU_56_FoldChange=='Inf',
+                                      ageMeans3$ICU56_mean,
+                                      ifelse(ageMeans3$ICU_56_FoldChange=='NaN',
+                                             1,
+                                             ageMeans3$ICU_56_FoldChange))
+ageMeans3$ICU_57_FoldChange <- ifelse(ageMeans3$ICU_57_FoldChange=='Inf',
+                                      ageMeans3$ICU57_mean,
+                                      ifelse(ageMeans3$ICU_57_FoldChange=='NaN',
+                                             1,
+                                             ageMeans3$ICU_57_FoldChange))
+
+ageMeans3$severe_56_FoldChange <- ifelse(ageMeans3$severe_56_FoldChange=='Inf',
+                                      ageMeans3$severe56_mean,
+                                      ifelse(ageMeans3$severe_56_FoldChange=='NaN',
+                                             1,
+                                             ageMeans3$severe_56_FoldChange))
+ageMeans3$severe_57_FoldChange <- ifelse(ageMeans3$severe_57_FoldChange=='Inf',
+                                      ageMeans3$severe57_mean,
+                                      ifelse(ageMeans3$severe_57_FoldChange=='NaN',
+                                             1,
+                                             ageMeans3$severe_57_FoldChange))
+
+
+
+ageMeans3$moderate_56_FoldChange <- ifelse(ageMeans3$moderate_56_FoldChange=='Inf',
+                                      ageMeans3$mod56_mean,
+                                      ifelse(ageMeans3$moderate_56_FoldChange=='NaN',
+                                             1,
+                                             ageMeans3$moderate_56_FoldChange))
+ageMeans3$moderate_57_FoldChange <- ifelse(ageMeans3$moderate_57_FoldChange=='Inf',
+                                      ageMeans3$mod57_mean,
+                                      ifelse(ageMeans3$moderate_57_FoldChange=='NaN',
+                                             1,
+                                             ageMeans3$moderate_57_FoldChange))
+
+
+
+```
+
+
+```{r}
+AgeFC_df <- ageMeans3[order(ageMeans3$ICU56_mean,decreasing=T)[c(1:50,60634:60683)],]
+dim(AgeFC_df)
+
+```
+
+```{r}
+source('geneCards2.R')
+```
+
+```{r}
+for (i in AgeFC_df$gene){
+  find25genes(i)
+}
+```
+
+
+
+```{r}
+files <- list.files('./gene scrapes')[1:100]
+files
+```
+
+```{r}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='ageFCgenes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+
+
+```{r}
+ageFCgenes <- read.delim('ageFCgenes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+ageFCgenes$V2 <- toupper(ageFCgenes$V2)
+colnames(ageFCgenes) <- c('gene','EnsemblGene','DateSourced')
+```
+
+
+```{r}
+for (i in ageFCgenes$gene){
+  getSummaries(i,'PBMC')
+}
+```
+
+```{r}
+getGeneSummaries('PBMC')
+```
+
+
+```{r}
+ageFC_summs <- read.csv("proteinGeneSummaries_pbmc.csv")
+```
+
+
+```{r}
+ageFC_summs2 <- ageFC_summs[,c(2:5)]
+ageFCgenes2 <- ageFCgenes[,-3]
+ageFCs <- merge(ageFCgenes2, ageFC_summs2,by.x='gene',by.y='gene')
+```
+
+
+```{r}
+ageFCs2 <- merge(ageFCs,AgeFC_df,by.x='EnsemblGene',by.y='gene')
+```
+
+
+```{r}
+ageFCs3 <- ageFCs2[!duplicated(ageFCs2),]
+```
+
+
+```{r}
+write.csv(ageFCs3,'ageFCs_summs.csv',row.names=F)
+```
+
+Now for the gender differences. The moderate data is already all females. We are going to use only the females and males in the severe, ICU, and healthy datasets.
+```{r}
+genderSevere <- tHeader[tHeader$sampleID %in% severeList,]
+femaleSevere <- severeDF[,c(2,4,6)]
+maleSevere <- severeDF[,c(1,3,5,7,8)]
+```
+
+
+```{r}
+genderICU <- tHeader[tHeader$sampleID %in% ICUlist,]
+genderICU
+femaleICU <- ICUdf[,c(2,4)]
+maleICU <- ICUdf[,c(1,3)]
+```
+
+
+```{r}
+genderHealthy <- tHeader[tHeader$sampleID %in% healthyList,]
+genderHealthy
+femaleHealthy <- healthyDF[,c(2,3,5,7,9,11,13,14,16)]
+maleHealthy <- healthyDF[,c(1,4,6,8,10,12,15,17)]
+```
+
+
+```{r}
+femaleHealthy$femHealthy_mean <- apply(femaleHealthy,1,mean)
+maleHealthy$maleHealthy_mean <- apply(maleHealthy,1,mean)
+femaleICU$femICU_mean <- apply(femaleICU,1,mean)
+maleICU$maleICU_mean <- apply(maleICU,1,mean)
+femaleSevere$femSevere_mean <- apply(femaleSevere,1,mean)
+maleSevere$maleSevere_mean <- apply(maleSevere,1,mean)
+```
+
+
+```{r}
+genderDF <- cbind(femaleHealthy,maleHealthy,
+                  femaleICU, maleICU,
+                  femaleSevere,
+                  maleSevere)
+colnames(genderDF)
+```
+
+
+```{r}
+genderDF_FCs <- genderDF[,c(10,19,22,25,29,35)]
+colnames(genderDF_FCs)
+```
+
+
+```{r}
+genderDF_FCs$femSevereHealthy_FoldChange <- genderDF_FCs$femSevere_mean/genderDF_FCs$femHealthy_mean
+genderDF_FCs$maleSevereHealthy_FoldChange <-
+  genderDF_FCs$maleSevere_mean/genderDF_FCs$maleHealthy_mean
+genderDF_FCs$femICUhealthy_FoldChange <- genderDF_FCs$femICU_mean/genderDF_FCs$femHealthy_mean
+genderDF_FCs$maleICUhealthy_FoldChange <- genderDF_FCs$maleICU_mean/genderDF_FCs$maleHealthy_mean
+
+```
+
+
+```{r}
+genderDF_FCs$femSevereHealthy_FoldChange <- ifelse(genderDF_FCs$femSevereHealthy_FoldChange=='Inf',
+              genderDF_FCs$femSevere_mean, ifelse(genderDF_FCs$femSevereHealthy_FoldChange=='NaN',
+                                                  1,
+                                      genderDF_FCs$femSevereHealthy_FoldChange))
+
+genderDF_FCs$maleSevereHealthy_FoldChange <- ifelse(genderDF_FCs$maleSevereHealthy_FoldChange=='Inf',
+              genderDF_FCs$maleSevere_mean, ifelse(genderDF_FCs$maleSevereHealthy_FoldChange=='NaN',
+                                                  1,
+                                      genderDF_FCs$maleSevereHealthy_FoldChange))
+
+genderDF_FCs$femICUhealthy_FoldChange <- ifelse(genderDF_FCs$femICUhealthy_FoldChange=='Inf',
+              genderDF_FCs$femICU_mean, ifelse(genderDF_FCs$femICUhealthy_FoldChange=='NaN',
+                                                  1,
+                                      genderDF_FCs$femICUhealthy_FoldChange))
+
+genderDF_FCs$maleICUhealthy_FoldChange <- ifelse(genderDF_FCs$maleICUhealthy_FoldChange=='Inf',
+              genderDF_FCs$maleICU_mean, ifelse(genderDF_FCs$maleICUhealthy_FoldChange=='NaN',
+                                                  1,
+                                      genderDF_FCs$maleICUhealthy_FoldChange))
+
+
+
+
+```
+
+
+```{r}
+genderDF_FCs100 <- genderDF_FCs[order(genderDF_FCs$femICUhealthy_FoldChange)[c(1:50,60634:60683)],]
+dim(genderDF_FCs100)
+```
+
+```{r}
+genderDF_FCs100$gene <- row.names(genderDF_FCs100)
+genderDF_FCs100b <- genderDF_FCs100[,c(11,1:10)]
+```
+
+
+```{r}
+source('geneCards2.R')
+```
+
+```{r}
+for (i in genderDF_FCs100b$gene){
+  find25genes(i)
+}
+```
+
+
+
+```{r}
+files <- list.files('./gene scrapes')[1:100]
+files
+```
+
+```{r}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='genderFCgenes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+
+
+```{r}
+genderFCgenes <- read.delim('genderFCgenes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+genderFCgenes$V2 <- toupper(genderFCgenes$V2)
+colnames(genderFCgenes) <- c('gene','EnsemblGene','DateSourced')
+```
+
+
+```{r}
+for (i in genderFCgenes$gene){
+  getSummaries(i,'PBMC')
+}
+```
+
+```{r}
+getGeneSummaries('PBMC')
+```
+
+
+```{r}
+genderFC_summs <- read.csv("proteinGeneSummaries_pbmc.csv")
+```
+
+
+```{r}
+genderFC_summs2 <- genderFC_summs[,c(2:5)]
+genderFCgenes2 <- genderFCgenes[,-3]
+genderFCs <- merge(genderFCgenes2, genderFC_summs2,by.x='gene',by.y='gene')
+```
+
+
+```{r}
+genderFCs2 <- merge(genderFCs,genderDF_FCs100b,by.x='EnsemblGene',by.y='gene')
+```
+
+
+```{r}
+genderFCs3 <- genderFCs2[!duplicated(genderFCs2),]
+```
+
+
+```{r}
+write.csv(genderFCs3,'genderFCs_summs.csv',row.names=F)
+```
+
+
+Ok, tables are ready for Tableau. For some visual analytics. The moderate data frame is all females, so when we look at the fold change of the moderate samples to healthy samples we are looking at all females to mixed genders of healthy samples. We could also just look at the fold change for moderate COVID-19 females to healthy females separately.
+```{r}
+modFemales <- moderateDF
+modFemales$femHealthy_mean <- genderDF_FCs$femHealthy_mean
+
+modFemales$femModHealthy_FoldChange <- modFemales$moderate_mean/modFemales$femHealthy_mean
+modFemales$femModHealthy_FoldChange <- ifelse(modFemales$femModHealthy_FoldChange=='Inf',
+                                       modFemales$moderate_mean,
+                                       ifelse(modFemales$femModHealthy_FoldChange=='NaN',
+                                              1,
+                                              modFemales$femModHealthy_FoldChange))
+modFemales$gene <- row.names(modFemales)
+modFemales2 <- modFemales[,c(8,1:7)]
+colnames(modFemales2)[6] <- 'femModerate_mean'
+modFemales3 <- merge(genderFCgenes2,modFemales2,by.x='EnsemblGene',by.y='gene')
+modFemale4 <- merge(genderFC_summs2,modFemales3,by.x='gene', by.y='gene')
+modFemales4 <- modFemale4[!duplicated(modFemale4),]
+modFemales5 <- modFemales4[order(modFemales4$femModHealthy_FoldChange)[c(0:50,334:383)],]
+write.csv(modFemales5,'femaleModerateFCs.csv',row.names=F)
 ```
 
 
@@ -247,14 +722,3 @@ for (i in DATA1genes$gene){
 ```{r}
 
 ```
-
-
-```{r}
-
-```
-
-
-```{r}
-
-```
-
