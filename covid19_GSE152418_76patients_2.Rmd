@@ -1,7 +1,7 @@
 ---
 title: "covid19 study"
 author: "Janis Corona"
-date: "8/13/2020"
+date: "8/14/2020"
 output: html_document
 ---
 
@@ -212,7 +212,7 @@ write.csv(DATA1,'DATA_100genes.csv',row.names=F)
 ```
 
 
-```{r,eval=F}
+```{r}
 source('geneCards2.R')
 for (i in DATA1$ENSEMBLID){  
   find25genes(i)
@@ -224,7 +224,7 @@ files <- list.files('./gene scrapes')[1:100]
 files
 ```
 
-```{r,eval=FALSE}
+```{rALSE}
 for (i in files){
  file <- paste('./gene scrapes',i, sep='/')
  t <- read.csv(file,sep=',',header=F)
@@ -241,14 +241,14 @@ colnames(DATA1genes) <- c('gene','EnsemblGene','DateSourced')
 ```
 
 
-```{r,eval=F}
+```{r}
 for (i in DATA1genes$gene){
   getSummaries(i,'PBMC')
 }
 ```
 
 
-```{r,eval=F}
+```{r}
 getGeneSummaries('PBMC')
 
 ```
@@ -431,7 +431,7 @@ ageMeans3$ICU_56_FoldChange <- ifelse(ageMeans3$ICU_56_FoldChange=='Inf',
                                       ageMeans3$ICU56_mean,
                                       ifelse(ageMeans3$ICU_56_FoldChange=='NaN',
                                              1,
-                  ifelse(ageMeans3$ICU_56_FoldChange==0, ageMeans3$healthy56_mean,
+                  ifelse(ageMeans3$ICU_56_FoldChange==0, 1-ageMeans3$healthy56_mean,
                                              ageMeans3$ICU_56_FoldChange)))
 
 ageMeans3$ICU_57_FoldChange <- ifelse(ageMeans3$ICU_57_FoldChange=='Inf',
@@ -439,20 +439,20 @@ ageMeans3$ICU_57_FoldChange <- ifelse(ageMeans3$ICU_57_FoldChange=='Inf',
                                       ifelse(ageMeans3$ICU_57_FoldChange=='NaN',
                                              1,
                   ifelse(ageMeans3$ICU_57_FoldChange==0,
-                         ageMeans3$healthy57_mean,                                             ageMeans3$ICU_57_FoldChange)))
+                         1-ageMeans3$healthy57_mean,                                             ageMeans3$ICU_57_FoldChange)))
 
 ageMeans3$severe_56_FoldChange <- ifelse(ageMeans3$severe_56_FoldChange=='Inf',
                                       ageMeans3$severe56_mean, ifelse(ageMeans3$severe_56_FoldChange=='NaN',
                                              1,
                     ifelse(ageMeans3$severe_56_FoldChange==0,
-                           ageMeans3$healthy56_mean,
+                           1-ageMeans3$healthy56_mean,
                                              ageMeans3$severe_56_FoldChange)))
 
 ageMeans3$severe_57_FoldChange <- ifelse(ageMeans3$severe_57_FoldChange=='Inf',
                                       ageMeans3$severe57_mean, ifelse(ageMeans3$severe_57_FoldChange=='NaN',
                                              1,
                       ifelse(ageMeans3$severe_57_FoldChange==0,
-                             ageMeans3$healthy57_mean,
+                             1-ageMeans3$healthy57_mean,
                                              ageMeans3$severe_57_FoldChange)))
 
 
@@ -461,14 +461,14 @@ ageMeans3$moderate_56_FoldChange <- ifelse(ageMeans3$moderate_56_FoldChange=='In
                                       ageMeans3$mod56_mean, ifelse(ageMeans3$moderate_56_FoldChange=='NaN',
                                              1,
                 ifelse(ageMeans3$moderate_56_FoldChange==0,
-                       ageMeans3$healthy56_mean,
+                       1-ageMeans3$healthy56_mean,
                                              ageMeans3$moderate_56_FoldChange)))
 
 ageMeans3$moderate_57_FoldChange <- ifelse(ageMeans3$moderate_57_FoldChange=='Inf',
                                       ageMeans3$mod57_mean, ifelse(ageMeans3$moderate_57_FoldChange=='NaN',
                                              1,
                 ifelse(ageMeans3$moderate_57_FoldChange==0,
-                       ageMeans3$healthy57_mean,
+                       1-ageMeans3$healthy57_mean,
                                              ageMeans3$moderate_57_FoldChange)))
 
 
@@ -487,7 +487,7 @@ Reset gene scrapes folder for new genes to gather since last run of find25genes(
 source('geneCards2.R')
 ```
 
-```{r,eval=F}
+```{r}
 for (i in AgeFC_df$gene){
   find25genes(i)
 }
@@ -500,7 +500,7 @@ files <- list.files('./gene scrapes')[1:100]
 files
 ```
 
-```{r,eval=FALSE}
+```{r}
 for (i in files){
  file <- paste('./gene scrapes',i, sep='/')
  t <- read.csv(file,sep=',',header=F)
@@ -519,13 +519,13 @@ ageFCgenes_c <- ageFCgenes_b[!duplicated(ageFCgenes_b),]
 ```
 
 
-```{r,eval=F}
+```{r}
 for (i in ageFCgenes_c$gene){
   getSummaries(i,'PBMC')
 }
 ```
 
-```{r,eval=F}
+```{r}
 getGeneSummaries('PBMC')
 ```
 
@@ -619,26 +619,26 @@ genderDF_FCs$femSevereHealthy_FoldChange <- ifelse(genderDF_FCs$femSevereHealthy
               genderDF_FCs$femSevere_mean, ifelse(genderDF_FCs$femSevereHealthy_FoldChange=='NaN',
                                                   1,
           ifelse(genderDF_FCs$femSevereHealthy_FoldChange==0,
-                 genderDF_FCs$femHealthy_mean, genderDF_FCs$femSevereHealthy_FoldChange)))
+                1- genderDF_FCs$femHealthy_mean, genderDF_FCs$femSevereHealthy_FoldChange)))
 
 genderDF_FCs$maleSevereHealthy_FoldChange <- ifelse(genderDF_FCs$maleSevereHealthy_FoldChange=='Inf',
               genderDF_FCs$maleSevere_mean, ifelse(genderDF_FCs$maleSevereHealthy_FoldChange=='NaN',
                                                   1,
                   ifelse(genderDF_FCs$maleSevereHealthy_FoldChange==0,
-                         genderDF_FCs$maleHealthy_mean,                                                  genderDF_FCs$maleSevereHealthy_FoldChange)))
+                         1-genderDF_FCs$maleHealthy_mean,                                                  genderDF_FCs$maleSevereHealthy_FoldChange)))
 
 genderDF_FCs$femICUhealthy_FoldChange <- ifelse(genderDF_FCs$femICUhealthy_FoldChange=='Inf',
               genderDF_FCs$femICU_mean, ifelse(genderDF_FCs$femICUhealthy_FoldChange=='NaN',
                                                   1,
             ifelse(genderDF_FCs$femICUhealthy_FoldChange==0,
-                   genderDF_FCs$femHealthy_mean,
+                   1-genderDF_FCs$femHealthy_mean,
                                       genderDF_FCs$femICUhealthy_FoldChange)))
 
 genderDF_FCs$maleICUhealthy_FoldChange <- ifelse(genderDF_FCs$maleICUhealthy_FoldChange=='Inf',
               genderDF_FCs$maleICU_mean, ifelse(genderDF_FCs$maleICUhealthy_FoldChange=='NaN',
                                                   1,
               ifelse(genderDF_FCs$maleICUhealthy_FoldChange==0,
-                     genderDF_FCs$maleHealthy_mean,
+                     1-genderDF_FCs$maleHealthy_mean,
                                       genderDF_FCs$maleICUhealthy_FoldChange)))
 
 
@@ -662,7 +662,7 @@ genderDF_FCs100b <- genderDF_FCs100[,c(11,1:10)]
 source('geneCards2.R')
 ```
 
-```{r,eval=F}
+```{r}
 for (i in genderDF_FCs100b$gene){
   find25genes(i)
 }
@@ -675,7 +675,7 @@ files <- list.files('./gene scrapes')[1:100]
 files
 ```
 
-```{r,eval=FALSE}
+```{rALSE}
 for (i in files){
  file <- paste('./gene scrapes',i, sep='/')
  t <- read.csv(file,sep=',',header=F)
@@ -692,13 +692,13 @@ colnames(genderFCgenes) <- c('gene','EnsemblGene','DateSourced')
 ```
 
 
-```{r,eval=F}
+```{r}
 for (i in genderFCgenes$gene){
   getSummaries(i,'PBMC')
 }
 ```
 
-```{r,eval=F}
+```{r}
 getGeneSummaries('PBMC')
 ```
 
@@ -740,7 +740,7 @@ modFemales$femModHealthy_FoldChange <- modFemales$moderate_mean/modFemales$femHe
 modFemales$femModHealthy_FoldChange <- ifelse(modFemales$femModHealthy_FoldChange=='Inf',
                                        modFemales$moderate_mean, ifelse(modFemales$femModHealthy_FoldChange=='NaN', 1,
         ifelse(modFemales$femModHealthy_FoldChange==0,
-               modFemales$femHealthy_mean,
+              1- modFemales$femHealthy_mean,
                modFemales$femModHealthy_FoldChange)))
 
 modFemales$gene <- row.names(modFemales)
@@ -778,7 +778,7 @@ colnames(ML_data2)
 ```
 
 
-```{r,eval=F}
+```{r}
 ML_data3 <- ML_data2[,c(4,5,7,10:29)]
 head(ML_data3)
 
@@ -786,7 +786,7 @@ head(ML_data3)
 
 
 
-```{r,eval=F}
+```{r}
 write.csv(ML_data3,'ML_data_covid.csv',row.names=F)
 ```
 
