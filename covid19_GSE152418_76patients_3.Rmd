@@ -1,0 +1,1242 @@
+---
+title: "covid19 study"
+author: "Janis Corona"
+date: "8/14/2020"
+output: html_document
+---
+
+The access number for this data is GSE151161 and it can be (downloaded)[https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418] with the text metadata information shown immediately below and the RAW data values of gene expression. No need to add the platform information, because the RAW data has the gene name attached to the Raw RNA gene expression data. The data resource link: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418.
+
+The ages of the patients in this study range from 23-91 years of age with a median age of 56, and there are 18 females and 16 males in 34 total samples.
+
+This is Peripheral Blood Mononuclear Cells with a (wikipedia)[en.wikipedia.org/wiki/Peripheral_blood_mononuclear_cell] definition:" A peripheral blood mononuclear cell (PBMC) is any peripheral blood cell having a round nucleus. These cells consist of lymphocytes (T cells, B cells, NK cells) and monocytes, whereas erythrocytes and platelets have no nuclei, and granulocytes (neutrophils, basophils, and eosinophils) have multi-lobed nuclei."
+
+National Center for Bioinformatics Information (NCBI) study summary:
+  "Series GSE152418		Query DataSets for GSE152418
+  Status	Public on Jul 31, 2020
+  Title	Systems biological assessment of immunity to severe and mild COVID-19 infections
+  Organism	Homo sapiens
+  Experiment type	Expression profiling by high throughput sequencing
+  Summary	The recent emergence of COVID-19 presents a major global crisis. Profound knowledge gaps remain about the interaction between the virus and the immune system. Here, we used a systems biology approach to analyze immune responses in 76 COVID-19 patients and 69 age and sex- matched controls, from Hong Kong and Atlanta. Mass cytometry revealed prolonged plasmablast and effector T cell responses, reduced myeloid expression of HLA-DR and inhibition of mTOR signaling in plasmacytoid DCs (pDCs) during infection. Production of pro-inflammatory cytokines plasma levels of inflammatory mediators, including EN-RAGE, TNFSF14, and Oncostatin-M, which correlated with disease severity, and increased bacterial DNA and endotoxin in plasma in and reduced HLA-DR and CD86 but enhanced EN-RAGE expression in myeloid cells in severe transient expression of IFN stimulated genes in moderate infections, consistent with transcriptomic analysis of bulk PBMCs, that correlated with transient and low levels of plasma COVID-19.
+ 	
+  Overall design	RNAseq analysis of PBMCs in a group of 17 COVID-19 subjects and 17 healthy controls"
+ 	
+
+
+
+```{r}
+library(dplyr)
+source("geneCards.R")
+```
+
+I manually copied and pasted the header information for each sample in the following table. It gives the age, if healthy, mild, severe, ICU, and one convalescent category for COVID-19 sampled patients, as well as gender and age and Atlanta, GA as the location.
+```{r}
+infoHeader <- read.csv('header.csv', sep=',', header=T,na.strings=c('',' ','NA'),
+                       stringsAsFactors = F)
+colnames(infoHeader)
+```
+
+```{r}
+row.names(infoHeader) <- infoHeader$X
+infoHeader <- infoHeader[,-26]
+infoHeader
+```
+
+The first sample has a class that doesn't fit this data of healthy or one of three stages of COVID-19. Lets see all the unique classes of disease states.
+```{r}
+tHeader <- as.data.frame(t(infoHeader))
+head(tHeader)
+```
+
+```{r}
+write.csv(tHeader,'tHeader.csv', row.names=T)
+tHeader <- read.csv('tHeader.csv',sep=',',header=T,row.names = 1, stringsAsFactors = F)
+tHeader$gender <- trimws(tHeader$gender,which='left',whitespace=' ')
+tHeader$geographicLocation <- trimws(tHeader$geographicLocation,which='left',whitespace=' ')
+tHeader$diseaseState <- trimws(tHeader$diseaseState,which='left',whitespace=' ')
+tHeader$severity <- trimws(tHeader$severity,which='left',whitespace=' ')
+tHeader$cellType <- trimws(tHeader$cellType,which='left',whitespace=' ')
+
+unique(tHeader$severity)
+```
+
+Lets divide this into subgroups based on severity except for the convalescent class. Maybe we can set this aside, and see if we can determine what class it is based on our results in the end of how certain genes we find behave in these other classes of Moderate, Severe, ICU, or Healthy.
+```{r}
+convalescent <- subset(tHeader,tHeader$severity=='Convalescent')
+moderate <- subset(tHeader, tHeader$severity=='Moderate')
+severe <- subset(tHeader, tHeader$severity=='Severe')
+ICU <- subset(tHeader, tHeader$severity=='ICU')
+healthy <- subset(tHeader, tHeader$severity=='Healthy')
+write.csv(tHeader,'tHeader.csv', row.names=T)
+
+```
+
+
+```{r}
+info <- read.delim('GSE152418_p20047_Study1_RawCounts.txt',sep='\t',header=T,
+                   na.strings=c('',' ','NA'), stringsAsFactors = F)
+head(info)
+```
+
+```{r}
+convalescentList <- convalescent$sampleID
+moderateList <- moderate$sampleID
+severeList <- severe$sampleID
+ICUlist <- ICU$sampleID
+healthyList <- healthy$sampleID
+
+moderateList
+severeList
+ICUlist
+healthyList
+```
+
+
+```{r}
+moderateList2 <- gsub('-','.',moderateList)
+moderateDF <- info[,colnames(info) %in% moderateList2]
+severeList2 <- gsub('-','.',severeList)
+severeDF <- info[,colnames(info) %in% severeList2]
+ICUlist2 <- gsub('-','.',ICUlist)
+ICUdf <- info[,colnames(info) %in% ICUlist2]
+healthyDF <- info[,colnames(info) %in% healthyList]
+convalescentDF <- info[,1:2]
+```
+
+```{r}
+cnConv <- colnames(convalescentDF[2])
+cnMod <- colnames(moderateDF)
+cnSev <- colnames(severeDF)
+cnHeal <- colnames(healthyDF)
+cnICU <- colnames(ICUdf)
+CN_old <- c(cnConv,cnMod,cnSev,cnHeal,cnICU)
+CN_old
+```
+
+```{r}
+colnames(convalescentDF)[2] <- 'convalescent'
+row.names(convalescentDF) <- convalescentDF$ENSEMBLID
+colnames(moderateDF) <- c('moderate1','moderate2','moderate3','moderate4')
+row.names(moderateDF) <- row.names(convalescentDF)
+colnames(severeDF) <- c('severe1','severe2','severe3','severe4','severe5','severe6','severe7',
+                        'severe8')
+row.names(severeDF) <- row.names(convalescentDF)
+colnames(ICUdf) <- c('ICU1','ICU2','ICU3','ICU4')
+row.names(ICUdf) <- row.names(convalescentDF)
+colnames(healthyDF) <- c('healthy1','healthy2','healthy3','healthy4','healthy5','healthy6',
+                         'healthy7','healthy8','healthy9','healthy10','healthy11','healthy12',
+                         'healthy13','healthy14','healthy15','healthy16','healthy17')
+row.names(healthyDF) <- row.names(convalescentDF)
+
+CN_new <- c(colnames(convalescentDF)[2],colnames(moderateDF),
+            colnames(severeDF),colnames(healthyDF),colnames(ICUdf))
+CN_new
+
+```
+
+```{r}
+CN1 <- as.data.frame(CN_old)
+CN1$CN_old <- as.character(paste(CN1$CN_old))
+CN1$CN_old <- gsub('[.]','-',CN1$CN_old,perl=T)
+CN2 <- as.data.frame(CN_new)
+CNs <- cbind(CN1,CN2)
+
+tHeader2 <- tHeader
+tHeader2$GSM_ID <- row.names(tHeader2)
+
+HeaderInformation <- merge(CNs,tHeader2,by.x='CN_old', by.y='sampleID')
+HeaderInformation <- HeaderInformation[,c(9,1:8)]
+head(HeaderInformation)
+```
+```{r}
+write.csv(HeaderInformation,'HeaderInformation.csv',row.names=F)
+```
+
+
+Lets get the gene means of each data set.
+```{r}
+moderateDF$moderate_mean <- apply(moderateDF,1,mean)
+severeDF$severe_mean <- apply(severeDF,1,mean)
+ICUdf$ICU_mean <- apply(ICUdf,1,mean)
+healthyDF$healthy_mean <- apply(healthyDF,1,mean)
+
+
+```
+
+Now combine all the data frames.
+```{r}
+dataMeans <- cbind(convalescentDF,healthyDF,moderateDF,severeDF,ICUdf)
+DATA <- dataMeans[,c(1:19,21:24,26:33,35:38,20,25,34,39)]
+colnames(DATA)
+```
+
+Lets get the fold change ratios of the means of the moderate, severe, and ICU to the healthy means.
+
+This is where the version 3 starts to get only those genes in the fold change values that are monotonically increasing from moderate->severe->ICU or decreasing monotonically from ICU->severe->moderate.
+```{r}
+DATA$mod_health_foldChange <- DATA$moderate_mean/DATA$healthy_mean
+DATA$sevr_health_foldChange <- DATA$severe_mean/DATA$healthy_mean
+DATA$ICU_health_foldChange <- DATA$ICU_mean/DATA$healthy_mean
+
+```
+
+We only want the change, from diseased state to healthy state, and when using division by zero, we will get Inf if the numerator is not zero but the denominator is zero, and NaN when both are zero. To handle this if the numerator is not zero and the denominator is, then the change is the numerator, and if they are both zero, then there is no change, hence zero change will be a 1 because there is no change in over or under expression. My previous use of this was errored, I will go back and fix this mistake, because having a fold change value of 0 actually means the gene had a decrease of 100% or halved, because and increase of 100% is a fold change of 2 and hence doubled. We will write these in with conditions using ifelse.In this regard, we should also change all 0.00000.... to the healthy mean value because if the disease state to healthy state ratio is 0/0.17 then the gene decreased expression 17% to 1. So we will say 1-healthy mean, so that 1 as our no change value between states, 1-the start value, it the disease value for change. Hence, expression in the healthy state to no expression in the disease state. So it decreased expression the level of expression in the healthy state to predict genes related to our grades of disease.
+```{r}
+DATA$mod_health_foldChange <- ifelse(DATA$mod_health_foldChange=='Inf',
+                                          DATA$moderate_mean, ifelse(DATA$mod_health_foldChange=='NaN', 1, ifelse(DATA$mod_health_foldChange==0, 1-DATA$healthy_mean,
+             DATA$mod_health_foldChange)))
+
+DATA$sevr_health_foldChange <- ifelse(DATA$sevr_health_foldChange=='Inf',
+        DATA$severe_mean, ifelse(DATA$sevr_health_foldChange=='NaN',  1,
+     ifelse(DATA$sevr_health_foldChange==0,1-DATA$healthy_mean,
+            DATA$sevr_health_foldChange)))
+
+DATA$ICU_health_foldChange <- ifelse(DATA$ICU_health_foldChange=='Inf',
+   DATA$ICU_mean, ifelse(DATA$ICU_health_foldChange=='NaN', 1,
+   ifelse(DATA$ICU_health_foldChange==0, 1-DATA$healthy_mean,
+          DATA$ICU_health_foldChange)))
+```
+
+
+```{r}
+DATA_v3 <- DATA
+DATA_v3$monotonicIncrease <- ifelse(((DATA_v3$ICU_health_foldChange > 
+                  DATA_v3$sevr_health_foldChange) & 
+                    (DATA_v3$sevr_health_foldChange >
+                    DATA_v3$mod_health_foldChange)),
+                  1,0)
+
+DATA_v3$monotonicDecrease <- ifelse(((DATA_v3$ICU_health_foldChange < 
+                  DATA_v3$sevr_health_foldChange) & 
+                    (DATA_v3$sevr_health_foldChange <
+                    DATA_v3$mod_health_foldChange)),
+                  1,0)
+```
+
+
+```{r}
+write.csv(DATA,'DATA_FCs_GSE152418.csv',row.names=F)
+
+write.csv(DATA_v3,'DATA_FCs_GSE152418-monotonicGenes.csv',row.names=F)
+```
+
+
+```{r}
+monotonicIncrease <- subset(DATA_v3,DATA_v3$monotonicIncrease==1)
+monotonicDecrease <- subset(DATA_v3,DATA_v3$monotonicDecrease==1)
+```
+
+
+From here I want to save these files and write a new script to test the topic modeling work of lda on gene expression prediction, since it was designed for wide matrices.
+```{r}
+write.csv(monotonicIncrease,'monotonicIncrease.csv',row.names=F)
+write.csv(monotonicDecrease,'monotonicDecrease.csv',row.names=F)
+```
+
+
+Go to the separte markdown file to see how lda does on this data of monotonic genes, monotonicGenes.Rmd
+
+
+***
+
+Lets get the matrix ready for each to predict the classes while leaving out the convalescent class. If you read the other previous versions of this script, the lda and random forest both classified that sample as healthy, but they also scored only 3/9 correct in classification of three classes 
+
+
+
+***
+Lets select some genes based on the highest and lowest fold change values. Since we put in the values, our fold change values of zero are significant for those genes that halved. Even smaller values of zero would mean a more significant down regulation. i.e. 0.0 versus 0.001, where the decline in gene expression went from a decrease of 10% versus a decrease of 1000% or 10 times the decrease in the disease state to the healthy state.
+```{r}
+DATA1 <- DATA[order(DATA$ICU_health_foldChange,decreasing=T)[c(1:50,60634:60683)],]
+dim(DATA1)
+```
+
+
+```{r}
+write.csv(DATA1,'DATA_100genes.csv',row.names=F)
+```
+
+
+```{r,eval=FALSE}
+source('geneCards2.R')
+for (i in DATA1$ENSEMBLID){  
+  find25genes(i)
+}
+```
+
+```{r,eval=FALSE}
+files <- list.files('./gene scrapes')[1:100]
+files
+```
+
+```{r,eval=FALSE}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='DATA1genes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+```{r}
+DATA1genes <- read.delim('DATA1genes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+DATA1genes$V2 <- toupper(DATA1genes$V2)
+colnames(DATA1genes) <- c('gene','EnsemblGene','DateSourced')
+```
+
+
+```{r}
+DATA1genes <- DATA1genes[,-3]
+DATA1genes <- DATA1genes[!duplicated(DATA1genes),]
+```
+
+
+```{r,eval=FALSE}
+for (i in DATA1genes$gene){
+  getSummaries(i,'PBMC')
+}
+```
+
+
+```{r,eval=FALSE}
+getGeneSummaries('PBMC')
+
+```
+
+
+```{r,eval=FALSE}
+pbmcSumms <- read.csv("proteinGeneSummaries_pbmc.csv")
+file.rename("proteinGeneSummaries_pbmc.csv",'proteinGeneSummaries_pbmc1.csv')
+```
+
+```{r}
+pbmcSumms <- read.csv("proteinGeneSummaries_pbmc1.csv")
+
+```
+
+
+```{r}
+head(pbmcSumms)
+```
+
+
+```{r}
+pbmcSumms2 <- pbmcSumms[,c(2:5)]
+pbmcSumms2 <- pbmcSumms2[!duplicated(pbmcSumms2),]
+```
+
+
+
+
+```{r}
+pbmcSummaries <- merge(DATA1genes,pbmcSumms2,by.x='gene',by.y='gene')
+pbmcSummaries <- pbmcSummaries[!duplicated(pbmcSummaries),]
+head(pbmcSummaries)
+```
+
+
+```{r}
+DATA1_Summs <- merge(pbmcSummaries,DATA1,by.x='EnsemblGene','ENSEMBLID')
+```
+
+
+```{r}
+write.csv(DATA1_Summs,'DATA_100FCs_summaries.csv',row.names=F)
+```
+
+We can further divide these groups into females versus males, and age by splitting by the median age.
+```{r}
+quantile(tHeader$age,.5)
+sort(tHeader$age)
+```
+The ages of these patients is from 23-91 years. With a median age of 56 years.
+
+```{r}
+summary(tHeader$gender=='F')
+```
+There are also 18 females and 16 males.
+
+The median age is 56 in this data of COVID patients. 
+```{r}
+moderateAgeList <- tHeader$age[tHeader$sampleID %in% moderateList]
+sort(moderateAgeList)
+```
+
+
+```{r}
+severeAgeList <- tHeader$age[tHeader$sampleID %in% severeList]
+sort(severeAgeList)
+```
+
+```{r}
+ICUageList <- tHeader$age[tHeader$sampleID %in% ICUlist]
+sort(ICUageList)
+```
+
+```{r}
+healthyAgeList <- tHeader$age[tHeader$sampleID %in% healthyList]
+sort(healthyAgeList)
+```
+
+If we split by less than or at 56 years of age on all data sets, we have data that is almost balanced between the two categories of older than 56 or 56 and younger patients.
+
+For gender, lets see if the class balance is distributed almost equally.
+```{r}
+moderateGenderList <- tHeader$gender[tHeader$sampleID %in% moderateList]
+sort(moderateGenderList)
+```
+
+```{r}
+severeGenderList <- tHeader$gender[tHeader$sampleID %in% severeList]
+sort(severeGenderList)
+```
+
+
+```{r}
+ICUgenderList <- tHeader$gender[tHeader$sampleID %in% ICUlist]
+sort(ICUgenderList)
+```
+
+
+```{r}
+healthyGenderList <- tHeader$gender[tHeader$sampleID %in% healthyList]
+sort(healthyGenderList)
+```
+
+
+When creating divisions by gender, the moderate class of patients is all females, so we wouldn't get any male data from that category of COVID-19 class, but the divisions by gender are almost equal for the other categories of healthy, ICU, and severe.
+
+Determining what genes are behaving differently when controlling for gender and age could add some useful information of how well aging and gender handle COVID-19 and body reactions. 
+
+The age will be split by those older than 56 and those younger than 57. And the genders will be split by those female and males only in the severe, ICU, and healthy data sets, as the moderate data set is entirely females.
+
+```{r}
+moderateList
+```
+
+```{r}
+tHeader[tHeader$sampleID %in% moderateList,]
+```
+
+Moderate by age younger than 57 and older than 56.
+```{r}
+mod56 <- moderateDF[,2:4]
+mod57 <- moderateDF[,1]
+
+```
+
+severe by age younger than 57 and older than 56.
+```{r}
+tHeader[tHeader$sampleID %in% severeList,]
+severe56 <- severeDF[,c(1,5:7)]
+severe57 <- severeDF[,c(2:4,8)]
+```
+
+ICU by age younger than 57 and older than 56.
+```{r}
+tHeader[tHeader$sampleID %in% ICUlist,]
+ICU56 <- ICUdf[,c(3,4)]
+ICU57 <- ICUdf[,c(1,2)]
+```
+
+healthy by age younger than 57 and older than 56.
+```{r}
+tHeader[tHeader$sampleID %in% healthyList,]
+healthy56 <- healthyDF[, c(1,5,8:10,12:15)]
+healthy57 <- healthyDF[,c(2:4,6,7,11,16,17)]
+```
+
+Lets get the means of each data frame on age in the four health cases.
+```{r}
+mod56$mod56_mean <- apply(mod56,1,mean)
+mod57a <- as.data.frame(mod57)
+colnames(mod57a) <- 'moderate1' #this is a vector of only 1 dimension
+mod57b <- as.data.frame(mod57)
+colnames(mod57b) <- 'mod57_mean'
+mod57c <- cbind(mod57a,mod57b)
+severe56$severe56_mean <- apply(severe56,1,mean)
+severe57$severe57_mean <- apply(severe57,1,mean)
+ICU56$ICU56_mean <- apply(ICU56,1,mean)
+ICU57$ICU57_mean <- apply(ICU57,1,mean)
+healthy56$healthy56_mean <- apply(healthy56,1,mean)
+healthy57$healthy57_mean <- apply(healthy57,1,mean)
+
+ageMeans <- cbind(mod56,mod57c,severe56,severe57,ICU56,ICU57,healthy56,healthy57)
+
+ageMeans2 <- ageMeans[,c(4,6,11,16,19,22,32,41)]
+ageMeans2$gene <- row.names(ageMeans2)
+ageMeans3 <- ageMeans2[,c(9,1:8)]
+colnames(ageMeans3)
+
+```
+
+
+```{r}
+ageMeans3$ICU_56_FoldChange <- ageMeans3$ICU56_mean/ageMeans3$healthy56_mean
+ageMeans3$ICU_57_FoldChange <- ageMeans3$ICU57_mean/ageMeans3$healthy57_mean
+ageMeans3$severe_56_FoldChange <- ageMeans3$severe56_mean/ageMeans3$healthy56_mean
+ageMeans3$severe_57_FoldChange <- ageMeans3$severe57_mean/ageMeans3$healthy57_mean
+ageMeans3$moderate_56_FoldChange <- ageMeans3$mod56_mean/ageMeans3$healthy56_mean
+ageMeans3$moderate_57_FoldChange <- ageMeans3$mod57_mean/ageMeans3$healthy57_mean
+```
+
+```{r}
+ageMeans3$ICU_56_FoldChange <- ifelse(ageMeans3$ICU_56_FoldChange=='Inf',
+                                      ageMeans3$ICU56_mean,
+                                      ifelse(ageMeans3$ICU_56_FoldChange=='NaN',
+                                             1,
+                  ifelse(ageMeans3$ICU_56_FoldChange==0, 1-ageMeans3$healthy56_mean,
+                                             ageMeans3$ICU_56_FoldChange)))
+
+ageMeans3$ICU_57_FoldChange <- ifelse(ageMeans3$ICU_57_FoldChange=='Inf',
+                                      ageMeans3$ICU57_mean,
+                                      ifelse(ageMeans3$ICU_57_FoldChange=='NaN',
+                                             1,
+                  ifelse(ageMeans3$ICU_57_FoldChange==0,
+                         1-ageMeans3$healthy57_mean,                                             ageMeans3$ICU_57_FoldChange)))
+
+ageMeans3$severe_56_FoldChange <- ifelse(ageMeans3$severe_56_FoldChange=='Inf',
+                                      ageMeans3$severe56_mean, ifelse(ageMeans3$severe_56_FoldChange=='NaN',
+                                             1,
+                    ifelse(ageMeans3$severe_56_FoldChange==0,
+                           1-ageMeans3$healthy56_mean,
+                                             ageMeans3$severe_56_FoldChange)))
+
+ageMeans3$severe_57_FoldChange <- ifelse(ageMeans3$severe_57_FoldChange=='Inf',
+                                      ageMeans3$severe57_mean, ifelse(ageMeans3$severe_57_FoldChange=='NaN',
+                                             1,
+                      ifelse(ageMeans3$severe_57_FoldChange==0,
+                             1-ageMeans3$healthy57_mean,
+                                             ageMeans3$severe_57_FoldChange)))
+
+
+
+ageMeans3$moderate_56_FoldChange <- ifelse(ageMeans3$moderate_56_FoldChange=='Inf',
+                                      ageMeans3$mod56_mean, ifelse(ageMeans3$moderate_56_FoldChange=='NaN',
+                                             1,
+                ifelse(ageMeans3$moderate_56_FoldChange==0,
+                       1-ageMeans3$healthy56_mean,
+                                             ageMeans3$moderate_56_FoldChange)))
+
+ageMeans3$moderate_57_FoldChange <- ifelse(ageMeans3$moderate_57_FoldChange=='Inf',
+                                      ageMeans3$mod57_mean, ifelse(ageMeans3$moderate_57_FoldChange=='NaN',
+                                             1,
+                ifelse(ageMeans3$moderate_57_FoldChange==0,
+                       1-ageMeans3$healthy57_mean,
+                                             ageMeans3$moderate_57_FoldChange)))
+
+
+
+```
+
+
+```{r}
+AgeFC_df <- ageMeans3[order(ageMeans3$ICU_56_FoldChange,decreasing=T)[c(1:50,60634:60683)],]
+dim(AgeFC_df)
+
+```
+
+Reset gene scrapes folder for new genes to gather since last run of find25genes().
+```{r,eval=FALSE}
+source('geneCards2.R')
+```
+
+```{r,eval=FALSE}
+for (i in AgeFC_df$gene){
+  find25genes(i)
+}
+```
+
+
+
+```{r,eval=FALSE}
+files <- list.files('./gene scrapes')[1:100]
+files
+```
+
+```{r,eval=FALSE}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='ageFCgenes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+
+
+```{r}
+ageFCgenes <- read.delim('ageFCgenes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+ageFCgenes$V2 <- toupper(ageFCgenes$V2)
+colnames(ageFCgenes) <- c('gene','EnsemblGene','DateSourced')
+ageFCgenes_b <- ageFCgenes[,-3]
+ageFCgenes_c <- ageFCgenes_b[!duplicated(ageFCgenes_b),]
+```
+
+
+```{r,eval=FALSE}
+for (i in ageFCgenes_c$gene[1:928]){
+  getSummaries(i,'PBMC')
+}
+```
+
+
+```{r,eval=FALSE}
+for (i in ageFCgenes_c$gene[929:length(ageFCgenes_c$gene)]){
+  getSummaries(i,'PBMC')
+}
+```
+
+```{r,eval=FALSE}
+getGeneSummaries('PBMC')
+```
+
+
+```{r,eval=FALSE}
+ageFC_summs <- read.csv("proteinGeneSummaries_pbmc.csv")
+file.rename("proteinGeneSummaries_pbmc.csv",'proteinGeneSummaries_pbmc2.csv')
+```
+
+```{r}
+ageFC_summs <- read.csv("proteinGeneSummaries_pbmc2.csv")
+
+```
+
+
+```{r}
+ageFC_summs2 <- ageFC_summs[,c(2:5)]
+ageFCs <- merge(ageFCgenes_c, ageFC_summs2,by.x='gene',by.y='gene')
+```
+
+
+```{r}
+ageFCs2 <- merge(ageFCs,AgeFC_df,by.x='EnsemblGene',by.y='gene')
+```
+
+
+```{r}
+ageFCs3 <- ageFCs2[!duplicated(ageFCs2),]
+```
+
+
+```{r}
+write.csv(ageFCs3,'ageFCs_summs.csv',row.names=F)
+```
+
+Now for the gender differences. The moderate data is already all females. We are going to use only the females and males in the severe, ICU, and healthy datasets.
+```{r}
+genderSevere <- tHeader[tHeader$sampleID %in% severeList,]
+femaleSevere <- severeDF[,c(2,4,6)]
+maleSevere <- severeDF[,c(1,3,5,7,8)]
+```
+
+
+```{r}
+genderICU <- tHeader[tHeader$sampleID %in% ICUlist,]
+genderICU
+femaleICU <- ICUdf[,c(2,4)]
+maleICU <- ICUdf[,c(1,3)]
+```
+
+
+```{r}
+genderHealthy <- tHeader[tHeader$sampleID %in% healthyList,]
+genderHealthy
+femaleHealthy <- healthyDF[,c(2,3,5,7,9,11,13,14,16)]
+maleHealthy <- healthyDF[,c(1,4,6,8,10,12,15,17)]
+```
+
+
+```{r}
+femaleHealthy$femHealthy_mean <- apply(femaleHealthy,1,mean)
+maleHealthy$maleHealthy_mean <- apply(maleHealthy,1,mean)
+femaleICU$femICU_mean <- apply(femaleICU,1,mean)
+maleICU$maleICU_mean <- apply(maleICU,1,mean)
+femaleSevere$femSevere_mean <- apply(femaleSevere,1,mean)
+maleSevere$maleSevere_mean <- apply(maleSevere,1,mean)
+```
+
+
+```{r}
+genderDF <- cbind(femaleHealthy,maleHealthy,
+                  femaleICU, maleICU,
+                  femaleSevere,
+                  maleSevere)
+colnames(genderDF)
+```
+
+
+```{r}
+genderDF_FCs <- genderDF[,c(10,19,22,25,29,35)]
+colnames(genderDF_FCs)
+```
+
+
+```{r}
+genderDF_FCs$femSevereHealthy_FoldChange <- genderDF_FCs$femSevere_mean/genderDF_FCs$femHealthy_mean
+genderDF_FCs$maleSevereHealthy_FoldChange <-
+  genderDF_FCs$maleSevere_mean/genderDF_FCs$maleHealthy_mean
+genderDF_FCs$femICUhealthy_FoldChange <- genderDF_FCs$femICU_mean/genderDF_FCs$femHealthy_mean
+genderDF_FCs$maleICUhealthy_FoldChange <- genderDF_FCs$maleICU_mean/genderDF_FCs$maleHealthy_mean
+
+```
+
+
+```{r}
+genderDF_FCs$femSevereHealthy_FoldChange <- ifelse(genderDF_FCs$femSevereHealthy_FoldChange=='Inf',
+              genderDF_FCs$femSevere_mean, ifelse(genderDF_FCs$femSevereHealthy_FoldChange=='NaN',
+                                                  1,
+          ifelse(genderDF_FCs$femSevereHealthy_FoldChange==0,
+                1- genderDF_FCs$femHealthy_mean, genderDF_FCs$femSevereHealthy_FoldChange)))
+
+genderDF_FCs$maleSevereHealthy_FoldChange <- ifelse(genderDF_FCs$maleSevereHealthy_FoldChange=='Inf',
+              genderDF_FCs$maleSevere_mean, ifelse(genderDF_FCs$maleSevereHealthy_FoldChange=='NaN',
+                                                  1,
+                  ifelse(genderDF_FCs$maleSevereHealthy_FoldChange==0,
+                         1-genderDF_FCs$maleHealthy_mean,                                                  genderDF_FCs$maleSevereHealthy_FoldChange)))
+
+genderDF_FCs$femICUhealthy_FoldChange <- ifelse(genderDF_FCs$femICUhealthy_FoldChange=='Inf',
+              genderDF_FCs$femICU_mean, ifelse(genderDF_FCs$femICUhealthy_FoldChange=='NaN',
+                                                  1,
+            ifelse(genderDF_FCs$femICUhealthy_FoldChange==0,
+                   1-genderDF_FCs$femHealthy_mean,
+                                      genderDF_FCs$femICUhealthy_FoldChange)))
+
+genderDF_FCs$maleICUhealthy_FoldChange <- ifelse(genderDF_FCs$maleICUhealthy_FoldChange=='Inf',
+              genderDF_FCs$maleICU_mean, ifelse(genderDF_FCs$maleICUhealthy_FoldChange=='NaN',
+                                                  1,
+              ifelse(genderDF_FCs$maleICUhealthy_FoldChange==0,
+                     1-genderDF_FCs$maleHealthy_mean,
+                                      genderDF_FCs$maleICUhealthy_FoldChange)))
+
+
+
+
+```
+
+
+```{r}
+genderDF_FCs100 <- genderDF_FCs[order(genderDF_FCs$femICUhealthy_FoldChange)[c(1:50,60634:60683)],]
+dim(genderDF_FCs100)
+```
+
+```{r}
+genderDF_FCs100$gene <- row.names(genderDF_FCs100)
+genderDF_FCs100b <- genderDF_FCs100[,c(11,1:10)]
+```
+
+
+```{r,eval=FALSE}
+source('geneCards2.R')
+```
+
+```{r,eval=FALSE}
+for (i in genderDF_FCs100b$gene){
+  find25genes(i)
+}
+```
+
+
+
+```{r,eval=FALSE}
+files <- list.files('./gene scrapes')[1:100]
+files
+```
+
+```{r,eval=FALSE}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='genderFCgenes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+
+
+```{r}
+genderFCgenes <- read.delim('genderFCgenes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+genderFCgenes$V2 <- toupper(genderFCgenes$V2)
+colnames(genderFCgenes) <- c('gene','EnsemblGene','DateSourced')
+genderFCgenes <- genderFCgenes[,-3]
+genderFCgenes <- genderFCgenes[!duplicated(genderFCgenes),]
+```
+
+
+```{r,eval=FALSE}
+for (i in genderFCgenes$gene[1:283]){
+  getSummaries(i,'PBMC')
+}
+```
+
+The file is in the gene scrapes folder from the source code, it is '<protein name>summary.csv' if there is an http error to backtrack and start at the list where cut in previous chunk.
+```{r,eval=FALSE}
+for (i in genderFCgenes$gene[284:length(genderFCgenes$gene)]){
+  getSummaries(i,'PBMC')
+}
+```
+
+
+```{r,eval=FALSE}
+getGeneSummaries('PBMC')
+```
+
+
+```{r,eval=FALSE}
+genderFC_summs <- read.csv("proteinGeneSummaries_pbmc.csv")
+file.rename("proteinGeneSummaries_pbmc.csv",'proteinGeneSummaries_pbmc3.csv')
+```
+
+```{r}
+genderFC_summs <- read.csv("proteinGeneSummaries_pbmc3.csv")
+
+```
+
+
+```{r}
+genderFC_summs2 <- genderFC_summs[,c(2:5)]
+genderFCgenes2 <- genderFCgenes[,-3]
+genderFCs <- merge(genderFCgenes2, genderFC_summs2,by.x='gene',by.y='gene')
+```
+
+
+```{r}
+genderFCs2 <- merge(genderFCs,genderDF_FCs100b,by.x='EnsemblGene',by.y='gene')
+```
+
+
+```{r}
+genderFCs3 <- genderFCs2[!duplicated(genderFCs2),]
+```
+
+
+```{r}
+write.csv(genderFCs3,'genderFCs_summs.csv',row.names=F)
+```
+
+
+Ok, tables are ready for Tableau. For some visual analytics. The moderate data frame is all females, so when we look at the fold change of the moderate samples to healthy samples we are looking at all females to mixed genders of healthy samples. We could also just look at the fold change for moderate COVID-19 females to healthy females separately.
+```{r}
+modFemales <- moderateDF
+modFemales$femHealthy_mean <- genderDF_FCs$femHealthy_mean
+
+modFemales$femModHealthy_FoldChange <- modFemales$moderate_mean/modFemales$femHealthy_mean
+
+modFemales$femModHealthy_FoldChange <- ifelse(modFemales$femModHealthy_FoldChange=='Inf',
+                                       modFemales$moderate_mean, ifelse(modFemales$femModHealthy_FoldChange=='NaN', 1,
+        ifelse(modFemales$femModHealthy_FoldChange==0,
+              1- modFemales$femHealthy_mean,
+               modFemales$femModHealthy_FoldChange)))
+
+modFemales$gene <- row.names(modFemales)
+modFemales2 <- modFemales[,c(8,1:7)]
+colnames(modFemales2)[6] <- 'femModerate_mean'
+modFemales3 <- merge(genderFCgenes2,modFemales2,by.x='EnsemblGene',by.y='gene')
+modFemale4 <- merge(genderFC_summs2,modFemales3,by.x='gene', by.y='gene')
+modFemales4 <- modFemale4[!duplicated(modFemale4),]
+modFemales5 <- modFemales4[order(modFemales4$femModHealthy_FoldChange)[c(0:50,334:383)],]
+write.csv(modFemales5,'femaleModerateFCs.csv',row.names=F)
+```
+
+DATA1_Summs highest fold change genes by ICU_health_foldChange
+```{r}
+dataML20 <- DATA1_Summs[order(DATA1_Summs$ICU_health_foldChange,
+                              decreasing=T)[1:80],]
+dataML_20 <- dataML20[!duplicated(dataML20),-c(1,3,4,5)]
+row.names(dataML_20) <- NULL
+head(dataML_20,10)
+```
+
+
+```{r}
+ML_data <- as.data.frame(t(dataML_20))
+colnames(ML_data) <- dataML_20$gene
+ML_data1 <- ML_data[-c(1),]
+ML_data1$sampleID <- row.names(ML_data1)
+HeaderInformation$CN_new <- as.character(paste(HeaderInformation$CN_new))
+ML_data2 <- merge(HeaderInformation,ML_data1,by.x='CN_new',by.y='sampleID')
+```
+
+
+```{r}
+colnames(ML_data2)
+```
+
+
+```{r}
+ML_data3 <- ML_data2[,c(4,5,7,10:29)]
+head(ML_data3)
+
+```
+
+
+
+```{r}
+write.csv(ML_data3,'ML_data_covid.csv',row.names=F)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+library(RANN) #this pkg supplements caret for out of bag validation
+library(e1071)
+library(caret)
+library(randomForest)
+library(MASS)
+library(gbm)
+
+```
+
+Reads in the genes as numeric integers, because they were factors with whitespace.
+```{r}
+ML_data3 <- read.csv('ML_data_covid.csv',sep=',',na.strings=c('',' ','NA'),
+                     stringsAsFactors = F,header=T)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(8989)
+ML_data3b <- ML_data3[-c(1),]
+inTrain <- createDataPartition(y=ML_data3b$severity, p=0.7, list=FALSE)
+
+trainingSet <- ML_data3b[inTrain,]
+testingSet <- ML_data3b[-inTrain,]
+dim(trainingSet)
+dim(testingSet)
+```
+
+Lets use random forest, knn, and glm algorithms to predict the ratings.
+```{r,error=FALSE, message=FALSE, warning=FALSE}
+set.seed(605040)
+rf_boot <- train(severity~., method='rf', 
+               na.action=na.pass,
+               data=(trainingSet),  preProc = c("center", "scale"),
+               trControl=trainControl(method='boot'), number=5)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predRF_boot <- predict(rf_boot, testingSet)
+
+DF_boot <- data.frame(predRF_boot, type=testingSet$severity)
+
+length_boot <- length(DF_boot$type)
+
+sum_boot <- sum(DF_boot$predRF_boot==DF_boot$type)
+
+accRF_boot <- (sum_boot/length_boot)
+
+accRF_boot
+head(DF_boot)
+```
+
+
+```{r}
+errored <- DF_boot[(DF_boot$predRF_boot != DF_boot$type),]
+errored
+```
+
+Lets see which samples created an error in our random forest model.
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+rfError <- testingSet[rn,]
+rfError
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+
+set.seed(8989)
+
+training <- ML_data3[-c(1:2),]
+testing <- ML_data3[1:2,]
+
+dim(training)
+dim(testing)
+```
+
+Lets use random forest, knn, and glm algorithms to predict the ratings.
+```{r,error=FALSE, message=FALSE, warning=FALSE}
+rf_boot <- train(severity~., method='rf', 
+               na.action=na.pass,
+               data=(training),  preProc = c("center", "scale"),
+               trControl=trainControl(method='boot'), number=5)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predRF_boot <- predict(rf_boot, testing)
+
+DF_boot <- data.frame(predRF_boot, type=testing$severity)
+
+DF_boot
+```
+The random forest classifier thinks the Convalescent class is a healthy sample given our 20 genes and other identifiers. 
+
+Lets try classifying it with our other models.
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+knn_boot <- train(severity ~ .,
+                method='knn', preProcess=c('center','scale'),
+                tuneLength=10, trControl=trainControl(method='boot'),
+                data=training)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predKNN_boot <- predict(knn_boot, testing)
+
+DF_KNN_boot <- data.frame(predKNN_boot, type=testing$severity)
+
+head(DF_KNN_boot)
+```
+
+Our KNN model or k-nearest neighbor also thinks the Convalescent sample is a healthy sample.
+
+Lets go back to our trainingSet and testingSet that exclude the Convalescent sample.
+
+KNN:
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(121234)
+knn_boot <- train(severity ~ .,
+                method='knn', preProcess=c('center','scale'),
+                tuneLength=10, trControl=trainControl(method='boot'),
+                data=trainingSet)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predKNN_boot <- predict(knn_boot, testingSet)
+
+DF_KNN_boot <- data.frame(predKNN_boot, type=testingSet$severity)
+
+DF_KNN_boot
+```
+
+```{r}
+errored <- DF_KNN_boot[(DF_KNN_boot$predKNN_boot != DF_KNN_boot$type),]
+errored
+```
+
+```{r}
+acc <- (length(testingSet$severity)-length(errored$predKNN_boot))/
+  length(testingSet$severity)
+acc
+```
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+KNNError <- testingSet[rn,]
+KNNError
+```
+
+Recursive partitioned trees-rpart.
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+
+set.seed(505005)
+
+rpartMod <- train(severity~., method='rpart', data=trainingSet,
+                trControl=trainControl(method='boot'))
+predrpart <- predict(rpartMod, testingSet)
+
+DF_rpart <- data.frame(predrpart, type=testingSet$severity)
+DF_rpart
+```
+
+```{r}
+errored <- DF_rpart[(DF_rpart$predrpart != DF_rpart$type),]
+errored
+```
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+rpartError <- testingSet[rn,]
+rpartError
+```
+
+Latent Dirichlet Model-topic modeler based on tokens with weights and the genes similating tokens or word counts with TF-IDF, counts, or gram weights.
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+
+set.seed(505005)
+
+ldaMod <- train(severity~., method='lda', data=trainingSet,
+                trControl=trainControl(method='boot'))
+predlda <- predict(ldaMod, testingSet)
+
+DF_lda <- data.frame(predlda, type=testingSet$severity)
+DF_lda
+```
+
+```{r}
+errored <- DF_lda[(DF_lda$predlda != DF_lda$type),]
+errored
+```
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+ldaError <- testingSet[rn,]
+ldaError
+```
+
+These genes that we selected from the 20 genes most expressed in fold change values of ICU samples to healthy samples, weren't very great in classifying the severity of the sample as moderate, severe, ICU, or healthy. This could be due to the limited samples where 24 were our training set and 9 our testing set with the one unlabeled or mislabeled sample as 'Convalescent' excluded. However, our KNN and RF models classified this sample as a 'healthy sample. And maybe it is, but when it came to accuracy in predicting the samples from our model trained on 24 samples, the RF model scored 33% with 3/9 correct. The KNN scored 55% with 5/9 correct. The rpart and lda scored 3/9 and 2/9 correct respectively. But that also included the age and gender features as numeric and factor respectively. 
+
+Lets remove those features that aren't genes and see if our results are better. We are going to remove the age and gender features.
+```{r}
+trainingSet2 <- trainingSet[,-c(1:2)]
+testingSet2 <- testingSet[,-c(1:2)]
+```
+
+
+
+Lets use random forest, knn, and glm algorithms to predict the ratings.
+```{r,error=FALSE, message=FALSE, warning=FALSE}
+set.seed(605040)
+rf_boot <- train(severity~., method='rf', 
+               na.action=na.pass,
+               data=(trainingSet2),  preProc = c("center", "scale"),
+               trControl=trainControl(method='boot'), number=5)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predRF_boot <- predict(rf_boot, testingSet2)
+
+DF_boot <- data.frame(predRF_boot, type=testingSet2$severity)
+
+length_boot <- length(DF_boot$type)
+
+sum_boot <- sum(DF_boot$predRF_boot==DF_boot$type)
+
+accRF_boot <- (sum_boot/length_boot)
+
+accRF_boot
+DF_boot
+```
+
+
+```{r}
+errored <- DF_boot[(DF_boot$predRF_boot != DF_boot$type),]
+errored
+```
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+rpartError <- testingSet[rn,]
+rpartError
+```
+
+The RF model scored better with the age and gender features removed. This time it classified 5/9 correct, better than the other data set of features' 3/9. 
+
+Lets see how the KNN does.
+
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(121234)
+knn_boot <- train(severity ~ .,
+                method='knn', preProcess=c('center','scale'),
+                tuneLength=10, trControl=trainControl(method='boot'),
+                data=trainingSet2)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predKNN_boot <- predict(knn_boot, testingSet2)
+
+DF_KNN_boot <- data.frame(predKNN_boot, type=testingSet2$severity)
+
+DF_KNN_boot
+```
+
+```{r}
+errored <- DF_KNN_boot[(DF_KNN_boot$predKNN_boot != DF_KNN_boot$type),]
+errored
+```
+
+```{r}
+acc <- (length(testingSet2$severity)-length(errored$predKNN_boot))/
+  length(testingSet2$severity)
+acc
+```
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+KNNError <- testingSet2[rn,]
+KNNError
+```
+
+The KNN model without the age and gender features scored the same with 5/9 correctly classified.
+
+Lets see if rpart and lda score better with the age and gender features removed.
+
+rpart:
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+
+set.seed(505005)
+
+rpartMod <- train(severity~., method='rpart', data=trainingSet2,
+                trControl=trainControl(method='boot'))
+predrpart <- predict(rpartMod, testingSet2)
+
+DF_rpart <- data.frame(predrpart, type=testingSet2$severity)
+DF_rpart
+```
+
+```{r}
+errored <- DF_rpart[(DF_rpart$predrpart != DF_rpart$type),]
+errored
+```
+
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+rpartError <- testingSet2[rn,]
+rpartError
+```
+
+The rpart scored the same in accuracy in classification of 3/9 correct.
+
+lda:
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+
+set.seed(505005)
+
+ldaMod <- train(severity~., method='lda', data=trainingSet2,
+                trControl=trainControl(method='boot'))
+predlda <- predict(ldaMod, testingSet2)
+
+DF_lda <- data.frame(predlda, type=testingSet2$severity)
+DF_lda
+```
+
+```{r}
+errored <- DF_lda[(DF_lda$predlda != DF_lda$type),]
+errored
+```
+
+```{r}
+rn <- as.numeric(row.names(errored))
+rn
+ldaError <- testingSet2[rn,]
+ldaError
+```
+
+The lda model scored 3/9 correct, which was slightly better than its original classification of 2/9 correct.
+
+
+We should get genes that we see are relevant to the genders and age because with our genes that had the most fold change in all the patients' ICU to healthy means there wasn't enough sampling or balanced samples, or these genes show variation in all severity of COVID-19 cases. We did see in the Tableau vizualizations that there are some genes that increase and decrease in separate groups, like those younger than 57 compared to older than 57 for the severe and ICU cases and for the males versus females. The blog to see those images and link out of the blog to the Tableau chart to explore the genes with variations is at:https://themassagenegotiator.com/blog/f/actual-covid-19-data-to-analyze-gene-expression-in-three-stages to see the genes that were differentiated in certain group comparisons. 
+
+The gene IFI27, for example has a fold change that is much higher in the moderate to healthy cases than it is in the severe and ICU cases where it monotonically decreases the more severe the case from moderate -> severe -> ICU.While most of the genes through a visual inspection increase monotonically from less severe to severe. Such as RHAG and RNF41 and most of the genes starting with an I. There are a couple that seem to be high in moderete, decrease in the severe, then increase to more than sever and moderate in the ICU cases. Examples of the latter are RIC3-DT and PCDH10. Those genes in the latter part might not hold any information about COVID-19, but also the females makeup all the moderate cases. That could also mean those genes play a role in female body maintenance and healthy. 
+
+I modified the fold change logic for when the disease state is zero but the healthy mean is not zero, and no difference was made in prediction accuracy as this is the 2nd script and the results are the same as the 1st script. The fold change values are different but none of the genes' values that changed from 0 to 1-healthy mean mattered in our filtering of the top 50 and bottom 50 values of 60683 genes. 
+
+We are using 20 genes to predict. We should sample less genes, the more relevant genes that do not show a monotonic increase or decrease between grades of severity in COVID-19 samples. Those genes are likely throwing off our measures. 
+
+
+
+
+

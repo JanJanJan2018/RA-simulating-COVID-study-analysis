@@ -212,27 +212,25 @@ write.csv(DATA1,'DATA_100genes.csv',row.names=F)
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 source('geneCards2.R')
 for (i in DATA1$ENSEMBLID){  
   find25genes(i)
 }
 ```
 
-```{r}
+```{r,eval=FALSE}
 files <- list.files('./gene scrapes')[1:100]
 files
 ```
 
-```{rALSE}
+```{r,eval=FALSE}
 for (i in files){
  file <- paste('./gene scrapes',i, sep='/')
  t <- read.csv(file,sep=',',header=F)
  write.table(t,file='DATA1genes.csv',sep=',',append=T,col.names=F,row.names=F)
 }
 ```
-
-
 
 ```{r}
 DATA1genes <- read.delim('DATA1genes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
@@ -242,20 +240,32 @@ colnames(DATA1genes) <- c('gene','EnsemblGene','DateSourced')
 
 
 ```{r}
+DATA1genes <- DATA1genes[,-3]
+DATA1genes <- DATA1genes[!duplicated(DATA1genes),]
+```
+
+
+```{r,eval=FALSE}
 for (i in DATA1genes$gene){
   getSummaries(i,'PBMC')
 }
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 getGeneSummaries('PBMC')
 
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 pbmcSumms <- read.csv("proteinGeneSummaries_pbmc.csv")
+file.rename("proteinGeneSummaries_pbmc.csv",'proteinGeneSummaries_pbmc1.csv')
+```
+
+```{r}
+pbmcSumms <- read.csv("proteinGeneSummaries_pbmc1.csv")
+
 ```
 
 
@@ -266,16 +276,14 @@ head(pbmcSumms)
 
 ```{r}
 pbmcSumms2 <- pbmcSumms[,c(2:5)]
+pbmcSumms2 <- pbmcSumms2[!duplicated(pbmcSumms2),]
 ```
 
 
-```{r}
-DATA1genes2 <- DATA1genes[,c(1:2)]
-```
 
 
 ```{r}
-pbmcSummaries <- merge(DATA1genes2,pbmcSumms2,by.x='gene',by.y='gene')
+pbmcSummaries <- merge(DATA1genes,pbmcSumms2,by.x='gene',by.y='gene')
 pbmcSummaries <- pbmcSummaries[!duplicated(pbmcSummaries),]
 head(pbmcSummaries)
 ```
@@ -483,11 +491,11 @@ dim(AgeFC_df)
 ```
 
 Reset gene scrapes folder for new genes to gather since last run of find25genes().
-```{r}
+```{r,eval=FALSE}
 source('geneCards2.R')
 ```
 
-```{r}
+```{r,eval=FALSE}
 for (i in AgeFC_df$gene){
   find25genes(i)
 }
@@ -495,12 +503,12 @@ for (i in AgeFC_df$gene){
 
 
 
-```{r}
+```{r,eval=FALSE}
 files <- list.files('./gene scrapes')[1:100]
 files
 ```
 
-```{r}
+```{r,eval=FALSE}
 for (i in files){
  file <- paste('./gene scrapes',i, sep='/')
  t <- read.csv(file,sep=',',header=F)
@@ -519,19 +527,32 @@ ageFCgenes_c <- ageFCgenes_b[!duplicated(ageFCgenes_b),]
 ```
 
 
-```{r}
-for (i in ageFCgenes_c$gene){
+```{r,eval=FALSE}
+for (i in ageFCgenes_c$gene[1:928]){
   getSummaries(i,'PBMC')
 }
 ```
 
-```{r}
+
+```{r,eval=FALSE}
+for (i in ageFCgenes_c$gene[929:length(ageFCgenes_c$gene)]){
+  getSummaries(i,'PBMC')
+}
+```
+
+```{r,eval=FALSE}
 getGeneSummaries('PBMC')
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 ageFC_summs <- read.csv("proteinGeneSummaries_pbmc.csv")
+file.rename("proteinGeneSummaries_pbmc.csv",'proteinGeneSummaries_pbmc2.csv')
+```
+
+```{r}
+ageFC_summs <- read.csv("proteinGeneSummaries_pbmc2.csv")
+
 ```
 
 
@@ -658,11 +679,11 @@ genderDF_FCs100b <- genderDF_FCs100[,c(11,1:10)]
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 source('geneCards2.R')
 ```
 
-```{r}
+```{r,eval=FALSE}
 for (i in genderDF_FCs100b$gene){
   find25genes(i)
 }
@@ -670,12 +691,12 @@ for (i in genderDF_FCs100b$gene){
 
 
 
-```{r}
+```{r,eval=FALSE}
 files <- list.files('./gene scrapes')[1:100]
 files
 ```
 
-```{rALSE}
+```{r,eval=FALSE}
 for (i in files){
  file <- paste('./gene scrapes',i, sep='/')
  t <- read.csv(file,sep=',',header=F)
@@ -689,22 +710,38 @@ for (i in files){
 genderFCgenes <- read.delim('genderFCgenes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
 genderFCgenes$V2 <- toupper(genderFCgenes$V2)
 colnames(genderFCgenes) <- c('gene','EnsemblGene','DateSourced')
+genderFCgenes <- genderFCgenes[,-3]
+genderFCgenes <- genderFCgenes[!duplicated(genderFCgenes),]
 ```
 
 
-```{r}
-for (i in genderFCgenes$gene){
+```{r,eval=FALSE}
+for (i in genderFCgenes$gene[1:283]){
   getSummaries(i,'PBMC')
 }
 ```
 
-```{r}
+The file is in the gene scrapes folder from the source code, it is '<protein name>summary.csv' if there is an http error to backtrack and start at the list where cut in previous chunk.
+```{r,eval=FALSE}
+for (i in genderFCgenes$gene[284:length(genderFCgenes$gene)]){
+  getSummaries(i,'PBMC')
+}
+```
+
+
+```{r,eval=FALSE}
 getGeneSummaries('PBMC')
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 genderFC_summs <- read.csv("proteinGeneSummaries_pbmc.csv")
+file.rename("proteinGeneSummaries_pbmc.csv",'proteinGeneSummaries_pbmc3.csv')
+```
+
+```{r}
+genderFC_summs <- read.csv("proteinGeneSummaries_pbmc3.csv")
+
 ```
 
 
@@ -1150,7 +1187,9 @@ We should get genes that we see are relevant to the genders and age because with
 
 The gene IFI27, for example has a fold change that is much higher in the moderate to healthy cases than it is in the severe and ICU cases where it monotonically decreases the more severe the case from moderate -> severe -> ICU.While most of the genes through a visual inspection increase monotonically from less severe to severe. Such as RHAG and RNF41 and most of the genes starting with an I. There are a couple that seem to be high in moderete, decrease in the severe, then increase to more than sever and moderate in the ICU cases. Examples of the latter are RIC3-DT and PCDH10. Those genes in the latter part might not hold any information about COVID-19, but also the females makeup all the moderate cases. That could also mean those genes play a role in female body maintenance and healthy. 
 
+I modified the fold change logic for when the disease state is zero but the healthy mean is not zero, and no difference was made in prediction accuracy as this is the 2nd script and the results are the same as the 1st script. The fold change values are different but none of the genes' values that changed from 0 to 1-healthy mean mattered in our filtering of the top 50 and bottom 50 values of 60683 genes. 
 
+We are using 20 genes to predict. We should sample less genes, the more relevant genes that do not show a monotonic increase or decrease between grades of severity in COVID-19 samples. Those genes are likely throwing off our measures. 
 
 
 

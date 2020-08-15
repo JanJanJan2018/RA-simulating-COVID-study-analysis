@@ -1,0 +1,447 @@
+---
+title: "monotonicGenes"
+author: "Janis Corona"
+date: "8/14/2020"
+output: html_document
+---
+
+
+GSE152418, 34 samples, 18 females, 16 males, aged 23-91. One convalescent sample, and a mixed number of samples in moderate, severe, and ICU grades of COVID-19 infection symptoms. The previous files for how this data was obtained are 'covid19_GSE152418_76patients_1.Rmd', and '2' and '3' for updated versions. It says 76 patients, because I recopied some code from a prior study using GSE151161 on COVID-19 symptoms that are similar to Rheumatoid Arthritis patients that had 76 samples but actually only had 38 patients. 
+
+This script is to test the topic modeling algorithm, latent dirichlet allocation (lda), on these wide matrices of genes once we convert them to such. Caret will be used for the lda model.
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+library(RANN) #this pkg supplements caret for out of bag validation
+library(e1071)
+library(caret)
+library(randomForest)
+library(MASS)
+library(gbm)
+library(dplyr)
+```
+
+```{r}
+monotonicIncrease <- read.csv('monotonicIncrease.csv',sep=',',
+                      na.strings=c('',' ','NA'),header=T, stringsAsFactors = F)
+monotonicDecrease <- read.csv('monotonicDecrease.csv',sep=',',
+                      na.strings=c('',' ','NA'),header=T, stringsAsFactors = F)
+
+HeaderInformation <- read.csv('HeaderInformation.csv',sep=',',
+                              header=T, na.strings=c('',' ','NA'),
+                              stringsAsFactors = F)
+```
+
+```{r}
+head(HeaderInformation)
+```
+
+
+
+```{r}
+monotonicIncreaseOrder10 <- monotonicIncrease[order(monotonicIncrease$ICU_health_foldChange,decreasing=T)[1:10],]
+
+monotonicDecreaseOrder10 <- monotonicDecrease[order(monotonicDecrease$ICU_health_foldChange, decreasing=T)[1:10],]
+
+
+colnames(monotonicIncreaseOrder10)
+```
+
+Lets only keep the actual samples for each class and set aside the convalescent sole sample.
+```{r}
+convalescentDecr <- monotonicDecreaseOrder10$convalescent
+convalescentIncr <- monotonicIncreaseOrder10$convalescent
+
+ensemblID <- monotonicIncreaseOrder10$ENSEMBLID
+
+monotonicIncrease2 <- monotonicIncreaseOrder10[,c(3:35)]
+monotonicDecrease2 <- monotonicDecreaseOrder10[,c(3:35)]
+
+sampleType <- c(rep('healthy',17),rep('moderate',4),
+                rep('severe',8),rep('ICU',4))
+```
+
+Make the two data frames matrices that flip the samples in the header for the rows and genes as the header from the EnsemblID feature.
+```{r}
+tIncr <- as.data.frame(t(monotonicIncrease2))
+colnames(tIncr) <- ensemblID
+tIncr$sample <- sampleType
+IncreaseMx <- tIncr[,c(11,1:10)]
+```
+
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(8989)
+
+inTrain <- createDataPartition(y=IncreaseMx$sample, p=0.7, list=FALSE)
+
+trainingSet <- IncreaseMx[inTrain,]
+testingSet <- IncreaseMx[-inTrain,]
+dim(trainingSet)
+dim(testingSet)
+```
+
+When using all 8088 genes as tokens for lda, it fails with accuracy and kappa values NA. So it was reduced to the top 10 highest fold change values in the ICU/healthy means.
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+IncreaseMx$sample <- as.factor(paste(IncreaseMx$sample))
+set.seed(505005)
+
+ldaMod <- train(sample~., method='lda', data=trainingSet,
+                preProc = c("center", "scale"),
+                trControl=trainControl(method='boot'))
+predlda <- predict(ldaMod, testingSet)
+
+DF_ldaI <- data.frame(predlda, type=testingSet$sample)
+DF_ldaI
+```
+
+
+```{r}
+errored1 <- DF_ldaI[(DF_ldaI$predlda != DF_ldaI$type),]
+errored1
+```
+
+```{r}
+rn <- as.numeric(row.names(errored1))
+rn
+ldaError <- testingSet[rn,]
+ldaError
+```
+
+
+```{r}
+Inc_lda_wrong <- row.names(ldaError)
+```
+
+
+
+```{r}
+lda_demg <- HeaderInformation[HeaderInformation$CN_new %in% row.names(ldaError),]
+lda_demg
+```
+
+The three samples misclassified by lda in our 10 most expressed genes are two males aged 54 and 56 and one female aged 75.
+
+When using the lda on only 10 of the most expressed genes in ICU/healthy mean values and genes that increased in expression with each more severe grade of COVID-19, there was an improvement from 5/9 correct to 6/9 for 67% accuracy.
+
+```{r,error=FALSE, message=FALSE, warning=FALSE}
+set.seed(605040)
+rf_boot <- train(sample~., method='rf', 
+               na.action=na.pass,
+               data=(trainingSet),  preProc = c("center", "scale"),
+               trControl=trainControl(method='boot'), number=5)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predRF_boot <- predict(rf_boot, testingSet)
+
+DF_bootI <- data.frame(predRF_boot, type=testingSet$sample)
+
+
+head(DF_bootI)
+```
+
+
+```{r}
+errored2 <- DF_bootI[(DF_bootI$predRF_boot != DF_bootI$type),]
+errored2
+```
+
+Lets see which samples created an error in our random forest model.
+```{r}
+rn <- as.numeric(row.names(errored2))
+rn
+rfError <- testingSet[rn,]
+rfError
+```
+
+
+```{r}
+RF_demg <- HeaderInformation[HeaderInformation$CN_new %in% row.names(rfError),]
+RF_demg
+```
+The random forest model on the 10 most expressed genes got 4/9 wrong in the classification with two females aged 60 and 75, and two males aged 54 and 56.
+
+```{r}
+Inc_rf_wrong <- row.names(rfError)
+```
+
+***
+
+Lets try lda with the 10 least expressed genes with monotonic increases across grades of COVID-19.
+
+```{r}
+tDecr <- as.data.frame(t(monotonicDecrease2))
+colnames(tDecr) <- ensemblID
+tDecr$sample <- sampleType
+DecreaseMx <- tDecr[,c(11,1:10)]
+```
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(8989)
+
+inTrain <- createDataPartition(y=DecreaseMx$sample, p=0.7, list=FALSE)
+
+trainingSet <- DecreaseMx[inTrain,]
+testingSet <- DecreaseMx[-inTrain,]
+dim(trainingSet)
+dim(testingSet)
+```
+
+When using all 8088 genes as tokens for lda, it fails with accuracy and kappa values NA. So it was reduced to the top 10 highest fold change values in the ICU/healthy means.
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+DecreaseMx$sample <- as.factor(paste(DecreaseMx$sample))
+set.seed(505005)
+
+ldaMod <- train(sample~., method='lda', data=trainingSet,
+                preProc = c("center", "scale"),
+                trControl=trainControl(method='boot'))
+predlda <- predict(ldaMod, testingSet)
+
+DF_ldaD <- data.frame(predlda, type=testingSet$sample)
+DF_ldaD
+```
+
+
+```{r}
+errored3 <- DF_ldaD[(DF_ldaD$predlda != DF_ldaD$type),]
+errored3
+```
+
+```{r}
+rn <- as.numeric(row.names(errored3))
+rn
+ldaError <- testingSet[rn,]
+ldaError
+```
+
+```{r}
+decr_lda_wrong <- row.names(ldaError)
+```
+
+
+Lets use random forest on the decreasing genes data to see if it does any better to predict the ratings.
+```{r,error=FALSE, message=FALSE, warning=FALSE}
+set.seed(605040)
+rf_boot <- train(sample~., method='rf', 
+               na.action=na.pass,
+               data=(trainingSet),  preProc = c("center", "scale"),
+               trControl=trainControl(method='boot'), number=5)
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+predRF_boot <- predict(rf_boot, testingSet)
+
+DF_bootD <- data.frame(predRF_boot, type=testingSet$sample)
+
+head(DF_bootD)
+```
+
+
+```{r}
+errored4 <- DF_bootD[(DF_bootD$predRF_boot != DF_bootD$type),]
+errored4
+```
+
+Lets see which samples created an error in our random forest model.
+```{r}
+rn <- as.numeric(row.names(errored4))
+rn
+rfError <- testingSet[rn,]
+rfError
+```
+
+```{r}
+decr_rf_wrong <- row.names(rfError)
+```
+
+
+There was an improvement with the random forest on the decreasing data set's 10 genes with 6/9 correct. one sample each of moderate, severe and ICU were incorrect.
+
+Lets see the age of those samples and gender with our header information.
+```{r}
+RF_demg <- HeaderInformation[HeaderInformation$CN_new %in% row.names(rfError),]
+RF_demg
+```
+ 
+Two females aged 60 and 75 and one male aged 56 were the misclassified samples in the random forest model using the 10 least expressed genes by fold change of ICU/healthy means.
+
+Lets compare which samples were misclassified in our testing set for the 10 least and most expressed genes in rf and lda.
+```{r}
+decr_lda_wrong;decr_rf_wrong; Inc_lda_wrong;Inc_rf_wrong
+```
+
+Ever model misclassified the 1st and 7th severe cases, the 1st moderate case and the 2nd ICU2 case was misclassified in the 10 least expressed genes using lda and the 10 most expressed genes using rf. The 14th healthy case was misclassified in the 10 least expressed genes using the lda model.
+Lets see the demographics of those five samples.
+```{r}
+HeaderInformation[HeaderInformation$CN_new %in% decr_lda_wrong,]
+```
+
+This is where recall and precision would come in to play with precision based on number predicted disease over actual disease, and recall is the number of healthy misclassified as disease. We have three classes to choose from. 
+
+precision: correctly predicted true positive/(true positive + false positive)
+recall: correctly predicted true positive/(true positive + false negative)
+
+The rf on 10 most:
+```{r}
+DF_bootI
+```
+
+```{r}
+#healthy precision and recall and accuracy:
+5/(5+2)
+5/(5+0)
+(5+2)/(5+2+2+0)
+
+#moderate precision and recall and accuracy:
+0/(1+0)
+0/(1)
+(0+8)/(0+8+1+0)
+
+#severe pecision and recall and accuracy
+0/(2+1)
+0/(0+2)
+(0+7)/(0+6+2+1)
+
+#ICU precision and recall and accuracy
+0/(0+1)
+0/(0+1)
+(0+7)/(0+7+1+1)
+```
+Manually the precision, recall, and accuracy was calculated for the four classes in the random forest model on the top 10 genes with a testing subset of 9 samples. The recall on the healthy class was 100% because all healthy classes were correctly identified as true positives, and there were no false negatives or healthy classes misclassified as another class.
+The precision on the healthy class had 2 false positives, that classified 2 classes as healthy when they weren't. The accuracy on the moderate class was 88%, but there was only 1 class for the modified and none of the predicted classes was a moderate sample So its true negative rate was high for not classifying any classes as moderate. 
+
+Lets make a function specific to our data frames to return the precision, recall, and accuracy of these four classes.
+```{r}
+precisionRecallAccuracy <- function(df){
+  
+ colnames(df) <- c('pred','type')
+  df$pred <- as.character(paste(df$pred))
+  df$type <- as.character(paste(df$type))
+  
+ classes <- unique(df$type)
+ 
+ class1a <- as.character(paste(classes[1]))
+ class2a <- as.character(paste(classes[2]))
+ class3a <- as.character(paste(classes[3]))
+ class4a <- as.character(paste(classes[4]))
+ 
+  #correct classes
+  class1 <- subset(df, df$type==class1a)
+  class2 <- subset(df, df$type==class2a)
+  class3 <- subset(df, df$type==class3a)
+  class4 <- subset(df, df$type==class4a)
+  
+  #incorrect classes
+  notClass1 <- subset(df,df$type != class1a)
+  notClass2 <- subset(df,df$type != class2a)
+  notClass3 <- subset(df,df$type != class3a)
+  notClass4 <- subset(df, df$type != class4a)
+  
+  #true positives (real positives predicted positive)
+  tp_1 <- length(class1$pred==class1$type)
+  tp_2 <- length(class2$pred==class2$type)
+  tp_3 <- length(class3$pred==class3$type)
+  tp_4 <- length(class4$pred==class4$type)
+  
+  #false positives (real negatives predicted positive)
+  fp_1 <- length(notClass1$pred==class1a)
+  fp_2 <- length(notClass2$pred==class2a)
+  fp_3 <- length(notClass3$pred==class3a)
+  fp_4 <- length(notClass4$pred==class4a)
+  
+  #false negatives (real positive predicted negative)
+  fn_1 <- length(class1$pred!=class1$type)
+  fn_2 <- length(class2$pred!=class2$type)
+  fn_3 <- length(class3$pred!=class3$type)
+  fn_4 <- length(class4$pred!=class4$type)
+  
+  #true negatives (real negatives predicted negative)
+  tn_1 <- length(notClass1$pred!=class1a)
+  tn_2 <- length(notClass2$pred!=class2a)
+  tn_3 <- length(notClass3$pred!=class3a)
+  tn_4 <- length(notClass4$pred!=class4a)
+  
+  
+  # we don't need the actual tp and np values not the predicted as we have now
+  # aTP1 <-length(Class1$type)
+  # aTP2 <- length(Class2$type)
+  # aTP3 <- length(Class3$type)
+  # aTP4 <- length(Class4$type)
+  # 
+  # aTN1 <- length(notClass1$type)
+  # aTN2 <- length(notClass2$type)
+  # aTN3 <- length(notClass3$type)
+  # aTN4 <- length(notClass4$type)
+  # 
+  
+  #precision
+  p1 <- tp_1/(tp_1+fp_1)
+  p2 <- tp_2/(tp_2+fp_2)
+  p3 <- tp_3/(tp_3+fp_3)
+  p4 <- tp_4/(tp_4+fp_4)
+  
+  #recall
+  r1 <- tp_1/(tp_1+fn_1)
+  r2 <- tp_2/(tp_2+fn_2)
+  r3 <- tp_3/(tp_3+fn_3)
+  r4 <- tp_4/(tp_4+fn_4)
+  
+  #accuracy
+  ac1 <- (tp_1+tn_1)/(tp_1+tn_1+fp_1+fn_1)
+  ac2 <- (tp_2+tn_2)/(tp_2+tn_2+fp_2+fn_2)
+  ac3 <- (tp_3+tn_3)/(tp_3+tn_3+fp_3+fn_3)
+  ac4 <- (tp_4+tn_4)/(tp_4+tn_4+fp_4+fn_4)
+  
+  print('precision, recall, accuracy for ')
+  print(class1a)
+  print(c(p1,r1,ac1))
+  print('precision, recall, accuracy for ')
+  print(class2a)
+  print(c(p2,r2,ac2))
+  print('precision, recall, accuracy for ')
+  print(class3a)
+  print(c(p3,r3,ac3))
+  print('precision, recall, accuracy for ')
+  print(class4a)
+  print(c(p4,r4,ac4))
+}
+```
+
+```{r}
+precisionRecallAccuracy(DF_bootI)
+```
+
+
+The rf on 10 least:
+```{r}
+DF_bootD
+```
+
+```{r}
+precisionRecallAccuracy(DF_bootD)
+```
+
+
+The lda on 10 most:
+```{r}
+DF_ldaI
+```
+
+```{r}
+precisionRecallAccuracy(DF_ldaI)
+```
+
+
+The lda on 10 least:
+```{r}
+DF_ldaD
+```
+
+```{r}
+precisionRecallAccuracy(DF_ldaD)
+```
+
