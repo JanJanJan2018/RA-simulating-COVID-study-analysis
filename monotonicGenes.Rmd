@@ -366,18 +366,6 @@ precisionRecallAccuracy <- function(df){
   tn_4 <- length(notClass4$pred!=class4a)
   
   
-  # we don't need the actual tp and np values not the predicted as we have now
-  # aTP1 <-length(Class1$type)
-  # aTP2 <- length(Class2$type)
-  # aTP3 <- length(Class3$type)
-  # aTP4 <- length(Class4$type)
-  # 
-  # aTN1 <- length(notClass1$type)
-  # aTN2 <- length(notClass2$type)
-  # aTN3 <- length(notClass3$type)
-  # aTN4 <- length(notClass4$type)
-  # 
-  
   #precision
   p1 <- tp_1/(tp_1+fp_1)
   p2 <- tp_2/(tp_2+fp_2)
@@ -396,18 +384,16 @@ precisionRecallAccuracy <- function(df){
   ac3 <- (tp_3+tn_3)/(tp_3+tn_3+fp_3+fn_3)
   ac4 <- (tp_4+tn_4)/(tp_4+tn_4+fp_4+fn_4)
   
-  print('precision, recall, accuracy for ')
-  print(class1a)
-  print(c(p1,r1,ac1))
-  print('precision, recall, accuracy for ')
-  print(class2a)
-  print(c(p2,r2,ac2))
-  print('precision, recall, accuracy for ')
-  print(class3a)
-  print(c(p3,r3,ac3))
-  print('precision, recall, accuracy for ')
-  print(class4a)
-  print(c(p4,r4,ac4))
+  table <- as.data.frame(rbind(c(class1a,p1,r1,ac1),
+                         c(class2a,p2,r2,ac2),
+                         c(class3a,p3,r3,ac3),
+                         c(class4a,p4,r4,ac4)))
+  
+  colnames(table) <- c('class','precision','recall','accuracy')
+  
+  return(table)
+  
+  
 }
 ```
 
