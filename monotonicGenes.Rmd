@@ -8,8 +8,9 @@ output: html_document
 
 GSE152418, 34 samples, 18 females, 16 males, aged 23-91. One convalescent sample, and a mixed number of samples in moderate, severe, and ICU grades of COVID-19 infection symptoms. The previous files for how this data was obtained are 'covid19_GSE152418_76patients_1.Rmd', and '2' and '3' for updated versions. It says 76 patients, because I recopied some code from a prior study using GSE151161 on COVID-19 symptoms that are similar to Rheumatoid Arthritis patients that had 76 samples but actually only had 38 patients. 
 
-This script is to test the topic modeling algorithm, latent dirichlet allocation (lda), on these wide matrices of genes once we convert them to such. Caret will be used for the lda model.
+This script is to test the topic modeling algorithm,linear discriminant analysis (lda), on these wide matrices of genes once we convert them to such. Caret will be used for the lda model.
 
+We can use our functions find25genes and the other [geneCards2.R](https://github.com/JanJanJan2018/RA-simulating-COVID-study-analysis/blob/master/geneCards2.R) script has.
 
 ```{r,error=FALSE, message=FALSE,warning=FALSE}
 library(RANN) #this pkg supplements caret for out of bag validation
@@ -82,7 +83,7 @@ dim(trainingSet)
 dim(testingSet)
 ```
 
-When using all 8088 genes as tokens for lda, it fails with accuracy and kappa values NA. So it was reduced to the top 10 highest fold change values in the ICU/healthy means.
+When using all 8088 genes as tokens for lda, it fails with accuracy and kappa values NA. So it was reduced to the top 10 highest fold change values in the ICU/healthy means. I origninally thought we were using the latent dirichlet allocation model of caret, but it is linear discriminant analysis of caret. This is why it fails. I do want to use the latent dirichlet allocation model, but it won't be in caret. It is another R package.
 ```{r,error=FALSE, message=FALSE,warning=FALSE}
 IncreaseMx$sample <- as.factor(paste(IncreaseMx$sample))
 set.seed(505005)
@@ -342,28 +343,28 @@ precisionRecallAccuracy <- function(df){
   notClass4 <- subset(df, df$type != class4a)
   
   #true positives (real positives predicted positive)
-  tp_1 <- length(class1$pred==class1$type)
-  tp_2 <- length(class2$pred==class2$type)
-  tp_3 <- length(class3$pred==class3$type)
-  tp_4 <- length(class4$pred==class4$type)
+  tp_1 <- sum(class1$pred==class1$type)
+  tp_2 <- sum(class2$pred==class2$type)
+  tp_3 <- sum(class3$pred==class3$type)
+  tp_4 <- sum(class4$pred==class4$type)
   
   #false positives (real negatives predicted positive)
-  fp_1 <- length(notClass1$pred==class1a)
-  fp_2 <- length(notClass2$pred==class2a)
-  fp_3 <- length(notClass3$pred==class3a)
-  fp_4 <- length(notClass4$pred==class4a)
+  fp_1 <- sum(notClass1$pred==class1a)
+  fp_2 <- sum(notClass2$pred==class2a)
+  fp_3 <- sum(notClass3$pred==class3a)
+  fp_4 <- sum(notClass4$pred==class4a)
   
   #false negatives (real positive predicted negative)
-  fn_1 <- length(class1$pred!=class1$type)
-  fn_2 <- length(class2$pred!=class2$type)
-  fn_3 <- length(class3$pred!=class3$type)
-  fn_4 <- length(class4$pred!=class4$type)
+  fn_1 <- sum(class1$pred!=class1$type)
+  fn_2 <- sum(class2$pred!=class2$type)
+  fn_3 <- sum(class3$pred!=class3$type)
+  fn_4 <- sum(class4$pred!=class4$type)
   
   #true negatives (real negatives predicted negative)
-  tn_1 <- length(notClass1$pred!=class1a)
-  tn_2 <- length(notClass2$pred!=class2a)
-  tn_3 <- length(notClass3$pred!=class3a)
-  tn_4 <- length(notClass4$pred!=class4a)
+  tn_1 <- sum(notClass1$pred!=class1a)
+  tn_2 <- sum(notClass2$pred!=class2a)
+  tn_3 <- sum(notClass3$pred!=class3a)
+  tn_4 <- sum(notClass4$pred!=class4a)
   
   
   #precision
@@ -372,11 +373,21 @@ precisionRecallAccuracy <- function(df){
   p3 <- tp_3/(tp_3+fp_3)
   p4 <- tp_4/(tp_4+fp_4)
   
+  p1 <- ifelse(p1=='NaN',0,p1)
+  p2 <- ifelse(p2=='NaN',0,p2)
+  p3 <- ifelse(p3=='NaN',0,p3)
+  p4 <- ifelse(p4=='NaN',0,p4)
+  
   #recall
   r1 <- tp_1/(tp_1+fn_1)
   r2 <- tp_2/(tp_2+fn_2)
   r3 <- tp_3/(tp_3+fn_3)
   r4 <- tp_4/(tp_4+fn_4)
+  
+  r1 <- ifelse(r1=='NaN',0,r1)
+  r2 <- ifelse(r2=='NaN',0,r2)
+  r3 <- ifelse(r3=='NaN',0,r3)
+  r4 <- ifelse(r4=='NaN',0,r4)
   
   #accuracy
   ac1 <- (tp_1+tn_1)/(tp_1+tn_1+fp_1+fn_1)
@@ -401,6 +412,7 @@ precisionRecallAccuracy <- function(df){
 precisionRecallAccuracy(DF_bootI)
 ```
 
+Note in the above results how accuracy can be much higher than precision and recall, because if there are 9 samples, and only one class of a sample, than not selecting that class only produces an error in accuracy of 1/9 for that class which is 11% error or 89% accuracy in prediction for that class. As we saw for the 'moderate' class when it wasn't predicted at all but was only in one test sample to predict.  
 
 The rf on 10 least:
 ```{r}
@@ -410,6 +422,8 @@ DF_bootD
 ```{r}
 precisionRecallAccuracy(DF_bootD)
 ```
+
+In the above results, the 'severe' class only got 1 out of 3 predicted samples as 'severe' right so it received a 33% in precision, and out of all classes that were 'severe', it only got 1 out of 2 of them correct and missed one class so its recall was 50%.
 
 
 The lda on 10 most:
@@ -430,4 +444,585 @@ DF_ldaD
 ```{r}
 precisionRecallAccuracy(DF_ldaD)
 ```
+
+
+***
+
+We know that we need to eliminate some of these genes from our most and least expressed gene set of 10 genes. We will do that later and test our prediction accuracy. 
+
+This script was designed to see if the lda model would allow a very wide and short data frame or matrix to be used as a tokenized natural language processing data frame but for genes. Unfortunately, I used the linear discriminant analysis (lda) model of caret and so it would fail because of the curse of dimensionality and having more features than samples. Right from the start our 8089X34 dimension matrix failed the lda modeling for missing accuracy and kappa values. I didn't tune the model at all or use any hyperparameters other than the center and scaling features of the preprocessing attribute in caret. It could possibly work if those hyperparameters were tuned. But the huge curse of dimensionality type matrix will never work in linear discriminant analysis. It would divide 8800+ features from one data frame into 4 groups with linear boundaries. Imagine how it fails. Latent dirichlet allocation is an NLP algorithm, thats for natural language processing, and this lda kind of model could use in simulating our gene numeric data as integers for counts of 'words' known as tokens instead of weighted counts like the Term Frequency-Inverse Document Frequency use of words. https://www.tidytextmining.com/topicmodeling.html is a good source to test out the LDA. I have used it before in other scripts, but it has been a while and thought caret had the package from previous work and information on caret. When I wanted to use linear discriminant analysis I couldn't find it and used Latent Dirichlet Allocation. Now when I want to use latent dirichlet allocation it's not the package I thought it was.
+
+Instead, we explored the 10 most and least expressed genes that are also increasing or decreasing monotonically from lowest severe case of COVID-19 to most severe case of COVID-19. The machine learning classification was about the same as our other work immediately preceding this script that used the 20 most and least expressed genes by fold change only. Also, this script didn't use the functions in our geneFunctions2.R script to merge these genes with the Human Genome Nomenclature (HGNC) gene symbol we are more familiar with instead it kept the Ensembl gene symbol.
+
+We should look at this data in Tableau and see if some genes pop out as useful or not, and also consider those samples that threw off the classifications, and possibly tuning or testing out on different hyperparameters of our ML models to see if we can improve. But doing the resampling could lead to overfitting if we generalize too much it won't predict the classes well. 
+
+Accuracy of the model overall could be improved, the healthy samples naturally had a better precision and recall as they had more samples out of all the classes. A few samples in particular were of two females and a male that were 56 or older, we could try leaving those samples out to see if they are outliers or data that skews the mean values and ultimately the fold change values. 
+
+The topics are defined from a library to to use Latent Dirichlet Allocation, the same wide matrices can be used with a grid search and tokenized words used in recommender systems and sentiment review but with random forest, neural nets, and gradient boosted machines. These caret algorithms were very fast compared to how they have behaved with my work in the past. I recommend trying out Latent Dirichlet to model the classes as topics or using the  tokenized formats of sentiment analysis and recommender systems' machine learning algorithms. My next extension of this study will explore those areas. Possibly with Python using reticulate to access Python in R.
+
+
+
+***
+
+I made a couple of Tableau charts and uploaded them to the Tableau Public Server to share. 
+
+The first chart is a comparison of the mean values across all three classes of COVID-19 with a highlighted fold change value of the ratio of disease to healthy means and are [monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/monotonicDecreaseCOVID19casesBarchart/monotonicDecrease?publish=yes) with fold change values at least 30. 
+
+![monotonically Decreasing Genes](./images/monotonicDecrease.png)
+
+
+
+The next chart is a chart of the most [monotonically increasing](https://public.tableau.com/profile/janis5126#!/vizhome/MonotonicIncreaseCOVID19casesBarchart/monotonicIncrease?publish=yes) fold change expression genes with at least 30 in fold change.
+
+![monotonically increasing genes](./images/monotonicIncrease.png)
+
+Each link will take you to the image's chart to hover the details. What is missing is the details of the Ensembl ID's HGNC gene symbol with annotations for what those genes do. Lets import those charts data that was done earlier and saved to this document's folder contents.
+
+```{r}
+mDecr <- read.csv('monotonicDecrease_Full_Data_data.csv',sep=',',
+                  header=T, na.strings=c('',' ','NA'),
+                  stringsAsFactors = F)
+head(mDecr)
+
+```
+
+```{r}
+mIncr <- read.csv('monotonicIncrease_Full_Data_data.csv',sep=',',
+                  header=T, na.strings=c('',' ','NA'),
+                  stringsAsFactors = F)
+head(mIncr)
+```
+
+Lets change the 1st column name to 'Moderate.Mean' in both data frames to remove that symbol changed in downloading the Tableau chart data.
+```{r}
+colnames(mDecr)[1] <- 'Moderate.Mean'
+colnames(mIncr)[1] <- 'Moderate.Mean'
+```
+
+
+Now lets source our functions to grab the gene symbols from genecards.org and the annotations.
+```{r}
+source('geneCards2.R')
+```
+
+Lets make a list of the Ensembl genes from both tables. They are not the same genes because if you are monotonically increasing as a gene, you cannot also monotonically decrease from least to most severe cases of COVID-19 sampled fold change values.
+```{r}
+decrList <- as.character(mDecr$Ensemblid)
+incrList <- as.character(mIncr$Ensemblid)
+
+geneList <- as.character(c(decrList,incrList))
+geneList
+```
+
+```{r,eval=FALSE}
+for (i in geneList){
+  find25genes(i)
+}
+```
+
+
+
+```{r,eval=FALSE}
+files <- list.files('./gene scrapes')[1:16]
+files
+```
+
+```{r,eval=FALSE}
+for (i in files){
+ file <- paste('./gene scrapes',i, sep='/')
+ t <- read.csv(file,sep=',',header=F)
+ write.table(t,file='monotonic1genes.csv',sep=',',append=T,col.names=F,row.names=F)
+}
+```
+
+```{r}
+monotonic1genes <- read.delim('monotonic1genes.csv',header=F,sep=',',na.strings=c('',' ','NA'))
+monotonic1genes$V2 <- toupper(monotonic1genes$V2)
+colnames(monotonic1genes) <- c('gene','EnsemblGene','DateSourced')
+monotonic1genes <- monotonic1genes[,-3]
+```
+
+
+```{r}
+head(monotonic1genes)
+```
+
+
+We will extract the gene summaries now.
+```{r,eval=FALSE}
+for (i in monotonic1genes$gene){
+  getSummaries(i,'PBMC')
+}
+```
+
+
+```{r,eval=FALSE}
+getGeneSummaries('PBMC')
+```
+
+```{r}
+monotonicSumms <- read.csv("proteinGeneSummaries_pbmc.csv",sep=',',
+                           header=T, na.strings=c('',' ','NA'),
+                           stringsAsFactors = F)
+monotonicSumms <- monotonicSumms[,2:5]
+
+head(monotonicSumms)
+```
+
+Merge the two retrieved data frames by gene to add to our numeric data of fold change values.
+```{r}
+montcData <- merge(monotonic1genes,monotonicSumms,by.x='gene',
+                   by.y='gene')
+```
+
+```{r}
+head(montcData)
+```
+
+Now combine to numeric fold change data.
+```{r}
+montcData2 <- rbind(mIncr,mDecr)
+montcData3 <- merge(montcData,montcData2, by.y='Ensemblid',
+                    by.x='EnsemblGene')
+head(montcData3)
+```
+
+Lets write this out to csv and create the same charts but add the annotations and gene symbol.
+```{r}
+write.csv(montcData3,'monotonicIncDecrSumms.csv',row.names=FALSE)
+```
+
+
+Now that I have the new data with summary annotations with the gene symbol instead of the Ensembl ID, I have made the Tableau charts and uploaded them to Tableau Public Server.
+
+The first chart is the [monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/monotonicDecreaseFCgrtr20summs/monotonicDecrease2?publish=yes) genes selected with moderate fold change values greater than 20. Hovering on each bar and disease state will give the mean value, fold change value also on the labels respective to each disease state, and the Entrez gene summary for the gene. There is an image of the chart without hovering over any bar on the barchart, and also an image of the chart when hovering over any bar on the barchart for that gene and disease state.
+![monotonic decreasing moderate fold change greater than 30](./images/monD1.png)
+![monotonic decreasing moderate fold change greater than 30 hovered details](./images/monD2.png)
+
+The updated 2nd chart as a new name is the gene symbol and Entrez gene summary annotation for each of these genes shown having [monotonically increasing](https://public.tableau.com/profile/janis5126#!/vizhome/monotonicIncreaseFCgrtr30summs/monotonicIncrease2?publish=yes) fold change values from least to most severe COVID-19 cases using the ICU fold change greater than 30.
+
+![monotonically increasing genes ICU fold change greater than 30](./images/monI1.png)
+
+
+![monotonically increasing genes ICU fold change greater than 30 hovered over for details](./images/monI2.png)
+
+Next, Lets see if we can use machine learning with just the random forest model and three of the top increasing and decreasing genes to classify the class of COVID-19 severity.
+
+***
+
+
+Lets create some conditional features to this data.
+```{r}
+montcData3$percentBW_MSI <- ifelse((montcData3$mod.health.foldChange>1.5*
+                          montcData3$sevr.health.foldChange & 
+                          montcData3$sevr.health.foldChange>1.5*
+                          montcData3$ICU.health.foldChange),1,0)
+montcData3$percentBW_ISM <- ifelse((montcData3$mod.health.foldChange<.5*
+                          montcData3$sevr.health.foldChange & 
+                          montcData3$sevr.health.foldChange<.5*
+                          montcData3$ICU.health.foldChange),1,0)
+
+```
+
+We have our three least and most expressed genes, lets now get those genes.
+```{r}
+least3 <- montcData3$gene[montcData3$percentBW_MSI==1]
+most3 <- montcData3$gene[montcData3$percentBW_ISM==1]
+```
+
+Our ML genes are:
+```{r}
+ML_genes <- c(as.character(paste(least3)),as.character(paste(most3)))
+ML_genes
+```
+
+```{r}
+ML_DF_leastMost <- subset(montcData3,montcData3$gene %in% ML_genes)
+ML_ensmbl_LstMst <- ML_DF_leastMost[,1:2]
+ML_ensmbl_LstMst
+```
+
+Lets import the original data, when extracting these genes in Tableau using the filters, it wasn't the same filtering principles used in the creation of our 10 most and least monotonic genes by fold change.
+```{r}
+originalDF <- read.delim('GSE152418_p20047_Study1_RawCounts.txt',sep='\t',
+                       header=T, na.strings=c('',' ','NA'),
+                       stringsAsFactors = F)
+```
+
+```{r}
+colnames(originalDF)
+```
+
+Lets look at our header information on the demographics of each samples again.
+```{r}
+HeaderInformation
+```
+
+```{r}
+cn <- as.data.frame(colnames(originalDF)[2:35])
+colnames(cn) <- 'originalNames'
+cn$originalNames <- gsub('[.]','-',cn$originalNames,perl=T)
+cn2 <- HeaderInformation[,2:3]
+newColumnNames <- merge(cn,cn2,by.x='originalNames',by.y='CN_old')
+```
+
+change the names back once merged to merge back with originalDF and new names.
+```{r}
+newColumnNames$originalNames <- gsub('-','.',
+                                     newColumnNames$originalNames,
+                                     perl=T)
+```
+
+
+```{r}
+DF1 <- merge(ML_ensmbl_LstMst,originalDF,by.x='EnsemblGene',
+             by.y='ENSEMBLID')
+DF2 <- DF1[,-1]
+row.names(DF2) <- DF2$gene
+DF3 <- DF2[,-1]
+DF4 <- as.data.frame(t(DF3))
+DF4$sample1 <- row.names(DF4)
+DF5 <- merge(DF4,newColumnNames, by.y='originalNames',by.x='sample1')
+row.names(DF5) <- DF5$sample1
+ML_dataframe3s <- DF5[,-1]
+head(ML_dataframe3s)
+```
+
+```{r}
+aliases <- ML_dataframe3s$CN_new
+ML_dataframe3s$CN_new <- gsub('[0-9]','',ML_dataframe3s$CN_new)
+```
+
+
+Now lets see how this new set of genes is at predicting our classes of COVID-19.
+Lets remove the convalescent class first.
+```{r}
+ML_dataframe3s$CN_new <- as.factor(paste(ML_dataframe3s$CN_new))
+row.names(ML_dataframe3s) <- NULL
+
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(9875)
+
+inTrain <- createDataPartition(y=ML_dataframe3s$CN_new, p=0.7, list=FALSE)
+
+trainingSet <- ML_dataframe3s[inTrain,]
+testingSet <- ML_dataframe3s[-inTrain,]
+dim(trainingSet)
+dim(testingSet)
+```
+Lets first test how well lda predicts the convalescent sample from training all the data samples.
+```{r}
+convalescent <- subset(ML_dataframe3s, ML_dataframe3s$CN_new=='convalescent')
+```
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+ldaMod <- train(CN_new~., method='lda', data=ML_dataframe3s,
+                trControl=trainControl(method='boot'))
+predlda <- predict(ldaMod, convalescent)
+
+DF_ldaConvalescent <- data.frame(predlda, type=convalescent$CN_new)
+DF_ldaConvalescent
+```
+
+
+
+```{r}
+precisionRecallAccuracy(DF_ldaConvalescent)
+```
+
+Given that the LDA model predicted healthy when it did have data to train on only 1 out of 34 samples having this class, the model predicted the class of the convalescent class to be healthy. Maybe it is a misclassification of a sample. The above shows the accuracy measures. Lets try the random forest model too.
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+rfMod <- train(CN_new~., method='rf', data=ML_dataframe3s,
+                trControl=trainControl(method='boot'))
+predrf <- predict(rfMod, convalescent)
+
+DF_rfConvalescent <- data.frame(predrf, type=convalescent$CN_new)
+DF_rfConvalescent
+```
+
+Interestingly the random forest model, predicted the convalescent class to be its own class of 'convalescent' and it also had one sample of 'convalescent' to train on this class. Likely it is because the values in this sample are identical to the values in the testing set because it is the exact sample. 
+```{r}
+precisionRecallAccuracy(DF_rfConvalescent)
+```
+
+The above measures show that the precision, recall, and accuracy were 100%. What if we made the testing sample a multicollinear version of itself and test the rf model? Lets multiply it by e.
+```{r}
+convalescent2 <- convalescent
+convalescent2[,1:6] <- exp(convalescent2[,1:6])
+```
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+rfMod <- train(CN_new~., method='rf', data=ML_dataframe3s,
+                trControl=trainControl(method='boot'))
+predrf <- predict(rfMod, convalescent2)
+
+DF_rfConvalescent2 <- data.frame(predrf, type=convalescent2$CN_new)
+DF_rfConvalescent2
+```
+
+When we changed the convalescent sample to the exponential function or natural number, e, of itself, the random forest classified this sample as moderate. We will assume the sample is healthy or moderate and not its own class of convalescent.
+
+If we remove the convalescent sample to train on in the random forest model, will it predict moderate or healthy or a more severe form? Lets also change the class to moderate in the convalescent testing set.
+```{r}
+MLDF <- subset(ML_dataframe3s, ML_dataframe3s$CN_new!='convalescent')
+MLDF$CN_new <- as.character(paste(MLDF$CN_new))
+MLDF$CN_new <- as.factor(MLDF$CN_new)
+DFc <- convalescent[,1:6]
+DFc$CN_new <- as.factor(paste('moderate'))
+```
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+rfMod <- train(CN_new~., method='rf', data=MLDF,
+                trControl=trainControl(method='boot'))
+predrf <- predict(rfMod, DFc)
+
+DF_rfConvalescent3 <- data.frame(predrf, type=DFc$CN_new)
+DF_rfConvalescent3
+```
+The random forest model predicted the convalescent class to be healthy. It says moderate, because I had to change the class level or the model threw and exception error and also I had to reclass the 5 factor levels original to the subset of our training data to 4 factors, because it remembers the omitted class of convalescent. So in the previous chunck the outcome feature was reclassed as character then reclassed as factor to omit the remembered class of 'convalescent.' 
+
+We can do the same thing by reclassifying it as healthy for the convalescent class and see if it works in all the data using the random forest model to classify the convalescent class as healthy.
+```{r}
+MLDF2 <- ML_dataframe3s
+MLDF2[MLDF2$CN_new=='convalescent',7] <- 'healthy'
+MLDF2$CN_new <- as.character(paste(MLDF2$CN_new))
+MLDF2$CN_new <- as.factor(MLDF2$CN_new)
+DFc <- convalescent[,1:6]
+DFc$CN_new <- as.factor(paste('healthy'))
+```
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+rfMod <- train(CN_new~., method='rf', data=MLDF2,
+                trControl=trainControl(method='boot'))
+predrf <- predict(rfMod, DFc)
+
+DF_rfConvalescent4 <- data.frame(predrf, type=DFc$CN_new)
+DF_rfConvalescent4
+```
+
+So we see that throwing in the convalescent sample as a healthy sample didn't affect the outcome of the random forest model predicting it as a healthy label. Lets go ahead and keep this dataset, MLDF2, with the convalescent sample as a healthy sample.
+```{r}
+grep('convalescent',ML_dataframe3s$CN_new)
+```
+
+We know that the original sample for convalescent is observation or row 12 in our data. Lets test these new genes on classifying our four classes of data and see if we can see an improvement from our other models. 
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(9875)
+
+inTrain <- createDataPartition(y=MLDF2$CN_new, p=0.7, list=FALSE)
+
+trainingSet <- MLDF2[inTrain,]
+testingSet <- MLDF2[-inTrain,]
+dim(trainingSet)
+dim(testingSet)
+```
+
+
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+rfMod <- train(CN_new~., method='rf', data=trainingSet,
+                trControl=trainControl(method='boot'))
+predrf <- predict(rfMod, testingSet)
+
+DF_RF <- data.frame(predrf, type=testingSet$CN_new)
+DF_RF
+```
+
+```{r}
+precisionRecallAccuracy(DF_RF)
+```
+
+Nope! Not an improvement using these genes. Lets see how lda does and knn.
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+LDAMod <- train(CN_new~., method='lda', data=trainingSet,
+                trControl=trainControl(method='boot'))
+predLDA <- predict(LDAMod, testingSet)
+
+DF_LDA <- data.frame(predLDA, type=testingSet$CN_new)
+DF_LDA
+```
+
+```{r}
+precisionRecallAccuracy(DF_LDA)
+```
+
+The LDA model scored slightly better in precision and recall as well as accuracy in the severe class and the same for the healthy class.Now for the knn model.
+
+```{r,error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+KNNMod <- train(CN_new~., method='knn', data=trainingSet,
+                trControl=trainControl(method='boot'))
+predKNN <- predict(KNNMod, testingSet)
+
+DF_KNN <- data.frame(predKNN, type=testingSet$CN_new)
+DF_KNN
+```
+
+```{r}
+precisionRecallAccuracy(DF_KNN)
+```
+
+The KNN model didn't score any better with these genes for each sample, but slightly worse than the random forest and lda models. Lets see if we can use gbm and rpart for a difference. GBM is what I think is the gradient boosted machines and glm we could also try is the generalized linear models and rpart is a type of trees algorithm for recursive partitioned trees possibly similar to decision trees that don't build the trees as in depth as the random forest trees. 
+
+The rpart model:
+```{r,eval=FALSE, error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+RPARTMod <- train(CN_new~., method='rpart', data=trainingSet,
+                trControl=trainControl(method='cv'))
+predRPART <- predict(RPARTMod, testingSet)
+
+DF_RPART <- data.frame(predRPART, type=testingSet$CN_new)
+DF_RPART
+```
+The rpart model produced an 'undefined columns' error with these settings.
+
+
+The gbm model:
+```{r,eval=FALSE, error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+GBMMod <- train(CN_new~., method='gbm', data=trainingSet,
+                trControl=trainControl(method='cv'))
+predGBM <- predict(GBMMod, testingSet)
+
+DF_GBM <- data.frame(predGBM, type=testingSet$CN_new)
+DF_GBM
+```
+The gbm model also produced a 'Something is wrong; all the Accuracy metric values are missing' error.
+
+
+The glm model:
+```{r,eval=FALSE, error=FALSE, message=FALSE,warning=FALSE}
+set.seed(505005)
+
+GLMMod <- train(CN_new~., method='glm', data=trainingSet,
+                trControl=trainControl(method='boot'))
+predGLM <- predict(GLMMod, testingSet)
+
+DF_GLM <- data.frame(predGLM, type=testingSet$CN_new)
+DF_GLM
+```
+
+The GLM model also produced the same error as the gbm model with missing accuracy and kappa metric values.
+
+***
+
+
+Lets move on to finding out the human body systems like Vitamin D and melanin, and see how they behave in the moderate, severe, and ICU cases compared to the healthy cases by way of our already calculated fold change values. We can use our functions find25genes and the other [geneCards2.R](https://github.com/JanJanJan2018/RA-simulating-COVID-study-analysis/blob/master/geneCards2.R) script has. 
+
+
+
+I added the above function to our geneCards2.R sourced script file of functions. This should reset the folder 'gene scrapes' that the supplementary files are in too. Resource the script everytime you don't need the supplementary files from another run, and want fresh files.
+```{r}
+source('geneCards2.R')
+```
+
+```{r, eval=F}
+find25genes('vitamin D')
+find25genes('melanin')
+```
+
+```{r, eval=F}
+getProteinGenes('vitamin D')
+getProteinGenes('melanin')
+```
+
+
+
+```{r}
+vitD <- read.csv( "Top25vitamin-ds.csv")
+melanin <- read.csv("Top25melanins.csv")
+```
+
+
+```{r}
+vitD3 <- vitD[1:3,1:2]
+mel3 <- melanin[1:3,1:2]
+
+integumentary <- rbind(vitD3,mel3)
+head(integumentary)
+```
+
+```{r, eval=F}
+for (i in vitD3$proteinType){
+  getSummaries2(i,'vitamin D')
+}
+for (i in mel3$proteinType){
+  getSummaries2(i,'melanin')
+}
+```
+
+
+```{r, eval=F}
+getGeneSummaries('vitamin D')
+getGeneSummaries('melanin')
+```
+
+```{r}
+vitD3summs <- read.csv("proteinGeneSummaries_vitamin-d.csv")
+mel3summs <- read.csv("proteinGeneSummaries_melanin.csv")
+```
+
+```{r}
+vitDmel_summs <- rbind(vitD3summs,mel3summs)
+head(vitDmel_summs)
+```
+
+
+```{r}
+vitD_melanin <- vitDmel_summs[,c(1:6)]
+vitD_melanin
+
+```
+
+```{r}
+origFCs <- read.csv('DATA_FCs_GSE152418.csv',sep=',',
+                    na.strings=c('',' ','NA'),
+                    stringsAsFactors = F)
+sun <- merge(vitD_melanin,origFCs, by.x='EnsemblID',
+             by.y='ENSEMBLID')
+sun
+```
+
+Great lets write this out to csv and use it to put together some quick Tableau charts.
+```{r}
+write.csv(sun,'sunGenes.csv',row.names=F)
+```
+
+
+
+Each of the following are from the [same chart](https://public.tableau.com/profile/janis5126#!/vizhome/sunGenesCOVID19/vdrSunGenesCOVID19?publish=yes) comparing sun Gene values in COVID-19 cases and VDR does increase with the severity of the case. The top outlier was subsequently exluded within Tableau to knock down the outlier genes, but hovering gives the names and gene summary as well as lableded fold change values of the disease/healthy mean ratio for each respective disease class.
+
+![image 1 sun Genes with VDR at the top](./images/sun1.png)
+
+
+![image 2 sun Genes with VDR excluded and PHEX as the highest healthy mean value showing](./images/sun2.png)
+
+
+![image 3 sun Genes with PHEX and VDR excluded](./images/sun3.png)
+
+![image 4 sun Genes with PHEX, VDR, and CYP27B1 excluded](./images/sun4.png)
+
 
