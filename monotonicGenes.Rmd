@@ -13,13 +13,9 @@ This script is to test the topic modeling algorithm,linear discriminant analysis
 We can use our functions find25genes and the other [geneCards2.R](https://github.com/JanJanJan2018/RA-simulating-COVID-study-analysis/blob/master/geneCards2.R) script has.
 
 ```{r,error=FALSE, message=FALSE,warning=FALSE}
-library(RANN) #this pkg supplements caret for out of bag validation
-library(e1071)
 library(caret)
-library(randomForest)
-library(MASS)
-library(gbm)
 library(dplyr)
+library(tidyr)
 ```
 
 ```{r}
@@ -1024,5 +1020,252 @@ Each of the following are from the [same chart](https://public.tableau.com/profi
 ![image 3 sun Genes with PHEX and VDR excluded](./images/sun3.png)
 
 ![image 4 sun Genes with PHEX, VDR, and CYP27B1 excluded](./images/sun4.png)
+
+
+Lets look at the data in another way. I want to gather the columns and combine with the demographic information. But first, there are two genes in the vitamin D genes' top 3 ranked from genecards.org, PHEX and VDR, that increase in fold change in the cases of moderate, to severe, to ICU for COVID-19, and one melanin gene, TYR.
+```{r}
+sun[,c(2:4,45:47)]
+```
+
+
+
+```{r}
+sunGathered <- gather(sun, key='sampleType',value='geneValue',7:40)
+head(sunGathered)
+```
+
+```{r}
+sunData <- merge(HeaderInformation,sunGathered,by.x='CN_new',
+                 by.y='sampleType')
+write.csv(sunData,'sunData.csv',row.names=FALSE)
+```
+
+An interesting chart showing the raw values of gene expression for the three melanin and Vitamin D genes top ranked by genecards.org was created and shared on [Tableau Public Server](https://public.tableau.com/profile/janis5126#!/vizhome/SunGenesDemographicsRawValues/SunGenesDemographics?publish=yes).
+
+We can see some genes decrease with age and others increase, also the gender differences as a color dimension shows changes in gene expression by gender. Take a look at the link above in Tableau and the images below to this chart.
+
+![Demographics of Sun Genes](./images/melD1.png)
+
+In the first image above, there is one outlier for a 76 year old gene when looking at the melanin gene OCA2 labeled severe8 that has much more of this gene expressed than other severe cases. But this gene's values tend to fluctuate on a cases by case basis for each severe sample.
+
+![Demographics of Sun Genes with Entrez gene summary](./images/melD2.png)
+
+
+![Demographics of Sun Genes Female outlier Vitamin D](./images/melD3.png)
+
+The details when hovering will be displayed if you select a scatter point to give the severity of the case and corresponding sample in that group.
+The last image shows with age for both females and males the CYP27B1 increases except for a female in her 60s identified as severe4 in the severity raw values of this gene. And a 54 year old male labeled as severe1 is also not following the increase with age.But otherwise this gene CYP27B1 increases with age in both genders within the severe and ICU severe cases, while decreasing with age in the moderate cases. In healthy cases there is not a recognizable pattern as it varies with age and gender.
+
+
+
+
+***
+
+
+Lets not stop at the sun genes, as a massage therapist of more than 14 years of experience and having recently studied for and taken and passed my MBLEx or Massage and Bodywork Licensing Examination, I can tell you there are many fascinating items of the body systems and mineral as well as vitamin dependencies that lead to disease in some people. But when relearning the endocrine system and the hormones related to the pineal, hypothalamus, pituitary, adrenals, thyroid, and pancreas many other vitamins, steroids, and hormones should be looked at in studying these different cases of COVID-19.
+
+We will look at the Vitamin C which helps the body absorb Vitamin D and make calcium in the bone blood, the glucagon that turn glucose into sugar and insulin that lowers glucose in the blood having to do with the pancreas hormones, dopamine that relates to parkinsons disease when the hypothalamus doesn't produce enough, melatonin that regulates sleep and produced by the pineal gland near the pituitary and hypothalamus in the brain that regulates sleep, estrogen, prolactin, and progesterone regulated by the pituitary gland in the brain in females, testosterone regulated by the males in their testes, and corticosteroids and adrenaline regulated by the adrenals when in sympathetic response of danger in the body. Also, the vitamins that people are commonly told to take in addition to Vitamin C and Vitamin D, such as fish oil or omega 3s, vitamin B12 or zinc, and magnesium mineral.Also, calcitonin, a thyroid hormone that breaks down calcium so that the kidneys don't get kidney stones nor other healthy problems.
+
+Lets use our data we created earlier with our fold change modified values for Inf, NaN, and 0 when z/0, 0/0,0/z where z is any rational number and the alternate value was replaced in respective case with disease mean, 1, or healthy mean.
+
+```{r}
+dataAllFCs <- read.csv('DATA_FCs_GSE152418-monotonicGenes.csv',sep=',',header=T, na.strings=c('',' ','NA'),
+                       stringsAsFactors = F)
+colnames(dataAllFCs)
+```
+
+That is a lot of genes to combine with our find25genes function and summarise, so lets just get the vitamins, minerals, and hormones we are interested in first, combine those into a data set and then add the HGNC gene symbol and the summaries to plot and discuss our findings.
+
+```{r}
+source('geneCards2.R')
+```
+
+```{r,eval=F}
+find25genes('vitamin D')
+find25genes('melanin')
+find25genes('vitamin C')
+find25genes('glucose')
+find25genes('insulin')
+find25genes('glucagon')
+find25genes('dopamine')
+find25genes('estrogen')
+find25genes('progesterone')
+find25genes('prolactin')
+find25genes('testosterone')
+find25genes('calcium')
+find25genes('melatonin')
+find25genes('vitamin B12')
+find25genes('zinc')
+find25genes('magnesium')
+find25genes('fish oil')
+find25genes('omega 3s')
+find25genes('adrenaline')
+find25genes('corticosteroids')
+find25genes('calcitonine')
+```
+
+
+```{r,eval=F}
+getProteinGenes('vitamin D')
+getProteinGenes('melanin')
+getProteinGenes('vitamin C')
+getProteinGenes('glucose')
+getProteinGenes('insulin')
+getProteinGenes('glucagon')
+getProteinGenes('dopamine')
+getProteinGenes('estrogen')
+getProteinGenes('progesterone')
+getProteinGenes('prolactin')
+getProteinGenes('testosterone')
+getProteinGenes('calcium')
+getProteinGenes('melatonin')
+getProteinGenes('vitamin B12')
+getProteinGenes('zinc')
+getProteinGenes('magnesium')
+getProteinGenes('fish oil')
+getProteinGenes('omega 3s')
+getProteinGenes('adrenaline')
+getProteinGenes('corticosteroids')
+getProteinGenes('calcitonine')
+```
+
+
+```{r}
+
+vitD <- read.csv('Top25vitamin-ds.csv')
+melanin <- read.csv('Top25melanins.csv')
+vitC <- read.csv('Top25vitamin-cs.csv')
+glucose <- read.csv('Top25glucoses.csv')
+insulin <- read.csv('Top25insulins.csv')
+glucagon <- read.csv('Top25glucagons.csv')
+dopamine <- read.csv('Top25dopamines.csv')
+estrogen <- read.csv('Top25estrogens.csv')
+progesterone <- read.csv('Top25progesterones.csv')
+prolactin <- read.csv('Top25prolactins.csv')
+testosterone <- read.csv('Top25testosterones.csv')
+calcium <- read.csv('Top25calciums.csv')
+melatonin <- read.csv('Top25melatonins.csv')
+vitB12 <- read.csv('Top25vitamin-b12s.csv')
+zinc <- read.csv('Top25zincs.csv')
+magnesium <- read.csv('Top25magnesiums.csv')
+fishOil <- read.csv('Top25fish-oils.csv')
+omega3s <- read.csv('Top25omega-3ss.csv')
+adrenaline <- read.csv('Top25adrenalines.csv')
+corticosteroid <- read.csv('Top25corticosteroidss.csv')
+calcitonine <- read.csv('Top25calcitonines.csv')
+```
+
+Lets only take the top 3 from each data frame of mineral, vitamin, or steroid.
+```{r}
+vitMinSter <- rbind(vitD[1:3,1:2],melanin[1:3,1:2],
+                    vitC[1:3,1:2],glucose[1:3,1:2],
+                    insulin[1:3,1:2],glucagon[1:3,1:2],
+                    dopamine[1:3,1:2],estrogen[1:3,1:2],
+                    progesterone[1:3,1:2],prolactin[1:3,1:2],
+                    testosterone[1:3,1:2],calcium[1:3,1:2],
+                    calcitonine[1:3,1:2],melatonin[1:3,1:2],
+                    vitB12[1:3,1:2],zinc[1:3,1:2],magnesium[1:3,1:2],
+                    fishOil[1:3,1:2],omega3s[1:3,1:2],
+                    adrenaline[1:3,1:2],
+                    corticosteroid[1:3,1:2])
+head(vitMinSter)                    
+```
+
+Some of the genes associated with one vitamin also associate with another. We will keep them this way for the visualizations or charting.We could make a link analysis with these genes that are associated with other vitamins and minerals, but if not then you should.
+
+Lets now get the gene summaries of these genes.
+```{r,eval=F}
+for (i in vitMinSter$proteinType){
+  getSummaries2(i,'protein')
+}
+```
+
+
+```{r,eval=F}
+getGeneSummaries('protein')
+```
+
+I only want the 2nd through 6th features.
+```{r}
+vitMinSterSumms <- read.csv("proteinGeneSummaries_protein.csv"
+)
+```
+
+
+```{r}
+vitMinSterSumms2 <- vitMinSterSumms[,2:6]
+head(vitMinSterSumms2)
+```
+
+Combine the vitamin searched with the gene from the last two data frames.
+```{r}
+vitamins <- merge(vitMinSter,vitMinSterSumms2,
+                  by.x='proteinType',
+                  by.y='gene')
+vitamins2 <- vitamins[!duplicated(vitamins),]
+head(vitamins2)
+```
+
+Lets now combine this dataframe with the Ensembl ID of the dataAllFCs dataframe.
+```{r}
+vitaminsDF <- merge(vitamins2,dataAllFCs,
+                    by.x='EnsemblID',
+                    by.y='ENSEMBLID')
+head(vitaminsDF)
+```
+
+We are ready to make are charts from this data to analyze any pattern, relationships, outlier samples, and make hypothesese on. Lets write this data frame out to csv.
+```{r}
+write.csv(vitaminsDF,'vitaminsDF.csv',row.names=FALSE)
+```
+
+Lets also attach the header demographic information and tidy the sample types into one column.
+```{r}
+vitDF <- gather(vitaminsDF,key='sampleName',value='sampleValue',7:40)
+```
+
+
+```{r}
+vitDF2 <- merge(HeaderInformation,vitDF,by.x='CN_new',
+                by.y='sampleName')
+```
+
+
+```{r}
+write.csv(vitDF2,'vitaminsTidyDF.csv',row.names=F)
+```
+
+
+I have created some visualizations that were uploaded to Tableau Public Server to view for these genes as a bar with fold change values, those genes that are only increasing in fold change by severity, and then those that are only decreasing in fold change by severity from least to worst or moderate to severe to ICU. The scatter plot has the age and gender as added dimensions, and all summaries of the genes are displayed when hovering over that feature.
+
+[All genes as a bar chart of fold change values](https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterAllGenesBarchart/vitMinSterAllGenesBarchart?publish=yes) then a scatter with raw values as a comparision with age and gender and sample ID:
+![barchart all Vitamin Genes' Fold Change Values](./images/vitBarAll.png)
+
+
+
+[A scatter plot by age, gender, and raw sample ID values](https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGender/vitaminCovidScatterAgeGender?publish=yes) with the gene and gene summary information:
+![vitamin Genes' scatter by age and gender](./images/vitScAll.png)
+
+A bar chart of those genes that are in the vitamin body systems as a bar chart of fold change values by severity of COVID-19 for those genes that are only increasing in fold change from lowest to worst severity.
+[bar chart monotonically increasing vitamin genes](https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterMonDecrAllGenesBarchart/vitMinSterMonDecrGenesBarchart?publish=yes):
+![bar chart monotonically increasing vitamin genes](./images/vitBarMI.png)
+
+[scatter plot of the monotonically increasing vitamin genes](https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGenderMonDecr/vitaminCovidScatterAgeGenderMonDecr?publish=yes):
+![scatter plot of the monotonically increasing vitamin genes](./images/vitScMI.png)
+
+
+[bar chart of those vitamin genes that are monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterMonIncrAllGenesBarchart/vitMinSterMonIncrGenesBarchart?publish=yes):
+![bar chart of those vitamin genes that are monotonically decreasing](./images/vitBarMD.png)
+
+[Scatter plot of those vitamin genes monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGenderMonIncr/vitaminCovidScatterAgeGenderMonIncr?publish=yes):
+![scatter plot of those vitamin genes monotonically decreasing](./images/vitScMD.png)
+
+
+There are many relationships that can be seen and understood by looking at the gene trends within the proteins and those increasing or decreasing by severity of COVID-19 when viewing the interactive plots in Tableau at the links provided before each image above.
+
+
+
+
+
 
 
