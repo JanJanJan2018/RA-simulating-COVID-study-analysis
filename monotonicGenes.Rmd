@@ -462,13 +462,19 @@ The topics are defined from a library to to use Latent Dirichlet Allocation, the
 
 I made a couple of Tableau charts and uploaded them to the Tableau Public Server to share. 
 
-The first chart is a comparison of the mean values across all three classes of COVID-19 with a highlighted fold change value of the ratio of disease to healthy means and are [monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/monotonicDecreaseCOVID19casesBarchart/monotonicDecrease?publish=yes) with fold change values at least 30. 
+The first chart is a comparison of the mean values across all three classes of COVID-19 with a highlighted fold change value of the ratio of disease to healthy means and are monotonically decreasing with fold change values at least 30. 
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/monotonicDecreaseCOVID19casesBarchart/monotonicDecrease?publish=yes" target="_blank">Tableau External Window</a>
+
 
 ![monotonically Decreasing Genes](./images/monotonicDecrease.png)
 
 
 
-The next chart is a chart of the most [monotonically increasing](https://public.tableau.com/profile/janis5126#!/vizhome/MonotonicIncreaseCOVID19casesBarchart/monotonicIncrease?publish=yes) fold change expression genes with at least 30 in fold change.
+The next chart is a chart of the most monotonically increasing fold change expression genes with at least 30 in fold change.
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/MonotonicIncreaseCOVID19casesBarchart/monotonicIncrease?publish=yes" target="_blank">Tableau External Window</a>
+
 
 ![monotonically increasing genes](./images/monotonicIncrease.png)
 
@@ -591,11 +597,14 @@ write.csv(montcData3,'monotonicIncDecrSumms.csv',row.names=FALSE)
 
 Now that I have the new data with summary annotations with the gene symbol instead of the Ensembl ID, I have made the Tableau charts and uploaded them to Tableau Public Server.
 
-The first chart is the [monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/monotonicDecreaseFCgrtr20summs/monotonicDecrease2?publish=yes) genes selected with moderate fold change values greater than 20. Hovering on each bar and disease state will give the mean value, fold change value also on the labels respective to each disease state, and the Entrez gene summary for the gene. There is an image of the chart without hovering over any bar on the barchart, and also an image of the chart when hovering over any bar on the barchart for that gene and disease state.
+The first chart is the monotonically decreasing genes selected with moderate fold change values greater than 20. Hovering on each bar and disease state will give the mean value, fold change value also on the labels respective to each disease state, and the Entrez gene summary for the gene. There is an image of the chart without hovering over any bar on the barchart, and also an image of the chart when hovering over any bar on the barchart for that gene and disease state.
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/monotonicDecreaseFCgrtr20summs/monotonicDecrease2?publish=yes" target="_blank">Tableau External Window</a>
+
 ![monotonic decreasing moderate fold change greater than 30](./images/monD1.png)
 ![monotonic decreasing moderate fold change greater than 30 hovered details](./images/monD2.png)
 
-The updated 2nd chart as a new name is the gene symbol and Entrez gene summary annotation for each of these genes shown having [monotonically increasing](https://public.tableau.com/profile/janis5126#!/vizhome/monotonicIncreaseFCgrtr30summs/monotonicIncrease2?publish=yes) fold change values from least to most severe COVID-19 cases using the ICU fold change greater than 30.
+The updated 2nd chart as a new name is the gene symbol and Entrez gene summary annotation for each of these genes shown having <a href="https://public.tableau.com/profile/janis5126#!/vizhome/monotonicIncreaseFCgrtr30summs/monotonicIncrease2?publish=yes" target="_blank">monotonically increasing</a> fold change values from least to most severe COVID-19 cases using the ICU fold change greater than 30.
 
 ![monotonically increasing genes ICU fold change greater than 30](./images/monI1.png)
 
@@ -1008,8 +1017,9 @@ write.csv(sun,'sunGenes.csv',row.names=F)
 ```
 
 
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/sunGenesCOVID19/vdrSunGenesCOVID19?publish=yes" target="_blank">Tableau External Window</a>
 
-Each of the following are from the [same chart](https://public.tableau.com/profile/janis5126#!/vizhome/sunGenesCOVID19/vdrSunGenesCOVID19?publish=yes) comparing sun Gene values in COVID-19 cases and VDR does increase with the severity of the case. The top outlier was subsequently exluded within Tableau to knock down the outlier genes, but hovering gives the names and gene summary as well as lableded fold change values of the disease/healthy mean ratio for each respective disease class.
+Each of the following are from the same chart comparing sun Gene values in COVID-19 cases and VDR does increase with the severity of the case. The top outlier was subsequently exluded within Tableau to knock down the outlier genes, but hovering gives the names and gene summary as well as lableded fold change values of the disease/healthy mean ratio for each respective disease class.
 
 ![image 1 sun Genes with VDR at the top](./images/sun1.png)
 
@@ -1040,7 +1050,7 @@ sunData <- merge(HeaderInformation,sunGathered,by.x='CN_new',
 write.csv(sunData,'sunData.csv',row.names=FALSE)
 ```
 
-An interesting chart showing the raw values of gene expression for the three melanin and Vitamin D genes top ranked by genecards.org was created and shared on [Tableau Public Server](https://public.tableau.com/profile/janis5126#!/vizhome/SunGenesDemographicsRawValues/SunGenesDemographics?publish=yes).
+An interesting chart showing the raw values of gene expression for the three melanin and Vitamin D genes top ranked by genecards.org was created and shared on <a href="https://public.tableau.com/profile/janis5126#!/vizhome/SunGenesDemographicsRawValues/SunGenesDemographics?publish=yes" target="_blank">Tableau Public Server</a>
 
 We can see some genes decrease with age and others increase, also the gender differences as a color dimension shows changes in gene expression by gender. Take a look at the link above in Tableau and the images below to this chart.
 
@@ -1102,6 +1112,7 @@ find25genes('omega 3s')
 find25genes('adrenaline')
 find25genes('corticosteroids')
 find25genes('calcitonine')
+find25genes('iron')
 ```
 
 
@@ -1127,6 +1138,7 @@ getProteinGenes('omega 3s')
 getProteinGenes('adrenaline')
 getProteinGenes('corticosteroids')
 getProteinGenes('calcitonine')
+getProteinGenes('iron')
 ```
 
 
@@ -1153,6 +1165,7 @@ omega3s <- read.csv('Top25omega-3ss.csv')
 adrenaline <- read.csv('Top25adrenalines.csv')
 corticosteroid <- read.csv('Top25corticosteroidss.csv')
 calcitonine <- read.csv('Top25calcitonines.csv')
+iron <- read.csv('Top25irons.csv')
 ```
 
 Lets only take the top 3 from each data frame of mineral, vitamin, or steroid.
@@ -1166,7 +1179,7 @@ vitMinSter <- rbind(vitD[1:3,1:2],melanin[1:3,1:2],
                     calcitonine[1:3,1:2],melatonin[1:3,1:2],
                     vitB12[1:3,1:2],zinc[1:3,1:2],magnesium[1:3,1:2],
                     fishOil[1:3,1:2],omega3s[1:3,1:2],
-                    adrenaline[1:3,1:2],
+                    adrenaline[1:3,1:2],iron[1:3,1:2],
                     corticosteroid[1:3,1:2])
 head(vitMinSter)                    
 ```
@@ -1238,31 +1251,77 @@ write.csv(vitDF2,'vitaminsTidyDF.csv',row.names=F)
 
 I have created some visualizations that were uploaded to Tableau Public Server to view for these genes as a bar with fold change values, those genes that are only increasing in fold change by severity, and then those that are only decreasing in fold change by severity from least to worst or moderate to severe to ICU. The scatter plot has the age and gender as added dimensions, and all summaries of the genes are displayed when hovering over that feature.
 
-[All genes as a bar chart of fold change values](https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterAllGenesBarchart/vitMinSterAllGenesBarchart?publish=yes) then a scatter with raw values as a comparision with age and gender and sample ID:
+<a href='https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterAllGenesBarchart/vitMinSterAllGenesBarchart?publish=yes',target='blank'>All genes as a bar chart of fold change values</a> then a scatter with raw values as a comparision with age and gender and sample ID:
+
 ![barchart all Vitamin Genes' Fold Change Values](./images/vitBarAll.png)
 
 
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGender/vitaminCovidScatterAgeGender?publish=yes" target="_blank">A scatter plot by age, gender, and raw sample ID values</a>  with the gene and gene summary information:
 
-[A scatter plot by age, gender, and raw sample ID values](https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGender/vitaminCovidScatterAgeGender?publish=yes) with the gene and gene summary information:
 ![vitamin Genes' scatter by age and gender](./images/vitScAll.png)
 
 A bar chart of those genes that are in the vitamin body systems as a bar chart of fold change values by severity of COVID-19 for those genes that are only increasing in fold change from lowest to worst severity.
-[bar chart monotonically increasing vitamin genes](https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterMonDecrAllGenesBarchart/vitMinSterMonDecrGenesBarchart?publish=yes):
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterMonDecrAllGenesBarchart/vitMinSterMonDecrGenesBarchart?publish=yes" target="_blank">bar chart monotonically increasing vitamin genes</a>
+
 ![bar chart monotonically increasing vitamin genes](./images/vitBarMI.png)
 
-[scatter plot of the monotonically increasing vitamin genes](https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGenderMonDecr/vitaminCovidScatterAgeGenderMonDecr?publish=yes):
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGenderMonDecr/vitaminCovidScatterAgeGenderMonDecr?publish=yes" target="_blank">scatter plot of the monotonically increasing vitamin genes</a>
+
+
 ![scatter plot of the monotonically increasing vitamin genes](./images/vitScMI.png)
 
 
-[bar chart of those vitamin genes that are monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterMonIncrAllGenesBarchart/vitMinSterMonIncrGenesBarchart?publish=yes):
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/vitMinSterMonIncrAllGenesBarchart/vitMinSterMonIncrGenesBarchart?publish=yes" target="_blank">bar chart of those vitamin genes that are monotonically decreasing</a>
+
+
 ![bar chart of those vitamin genes that are monotonically decreasing](./images/vitBarMD.png)
 
-[Scatter plot of those vitamin genes monotonically decreasing](https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGenderMonIncr/vitaminCovidScatterAgeGenderMonIncr?publish=yes):
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/vitaminCovidScatterAgeGenderMonIncr/vitaminCovidScatterAgeGenderMonIncr?publish=yes" target="_blank">Scatter plot of those vitamin genes monotonically decreasing</a>
+
+
 ![scatter plot of those vitamin genes monotonically decreasing](./images/vitScMD.png)
 
 
 There are many relationships that can be seen and understood by looking at the gene trends within the proteins and those increasing or decreasing by severity of COVID-19 when viewing the interactive plots in Tableau at the links provided before each image above.
 
+After adding the iron genes to our data, it was charted by fold change values and also by raw values, age, gender, and severity of COVID-19 disease.
+
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/ironCovid19AgeGenderSeverityScatter/ironCovid19AgeGenderSeverityScatter?publish=yes" target="_blank">Scatter of gene values by severity, age, and gender</a>
+
+![scatter of genes](./images/ironScatterAgeGenderSeverity.png)
+
+The image above is the chart of genes in Tableau that has only the iron actual raw values for its top 3 ranked genes in our samples. We can see that the first gene is much higher over all in expression in healthy samples, and that in all three grades of severity of COVID-19 the iron levels are on the smaller range decreasing with age in both genders and all cases excep the ICU grade for females where it increased with age. The 2nd iron gene is similar except that iron increases with age in females. The last iron gene shows that it is lower in healthy samples and than the other two iron genes, but in ICU grades of COVID-19 it is increased. 
+
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/notMonIncOrDecr/notMonIncOrDecr?publish=yes" target="_blank">non-monotonic gene fold changes-iron</a>
+
+![nonMonotonic Genes-Iron](./images/ironNonMonFCs.png)
+
+This image above is of those iron genes that aren't monotonically increasing or decreasing. There fold change values are shown for each gene and all are under expressed in the disease state compared to the healthy state. We created the rules for these fold change values so that if the disease state mean was 0 and the healthy mean was not 0, the fold change would be 1-healthy mean, and if both the disease state and the healthy state means were 0 then the fold change value would be 1, and finally if the healthy mean was 0 but the disease mean was not 0 the value would be the disease state. And if the fold change was not 0, Inf, or NaN, then the value would stay as is from the disease state/healthy state ratio of mean values. We can see from the image of the Tableau chart, that the iron gene was clicked on and selected to 'keep only' so that only the iron genes are displayed among those nonmonotonic. HFE and SLC11A2 are shown, and the ICU grade of COVID-19 severity is lower than the severe grade of COVID-19, but the moderate grade is lower than the ICU grade in the HFE gene and higher in the SLC11A2 gene. SLC11A2 is involved in transporter activity and copper ion binding and associated with anemia (not enough red blood cells). While HFE is associated with hemochromatosis (too many red blood cells) and signaling receptor binding as well as peptide antigen binding. 
+
+
+
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/monIncBarChart/monIncBarChart?publish=yes" target="_blank">monotonically decreasing fold change values-iron</a>
+
+![monotonic increasing fold changes-iron](./images/ironMonIncrFCs.png)
+
+The image above is of those genes monotonically increasing but with iron selected as the 'keep only' gene to be displayed. We can see the description of this gene that is one of the top three ranked iron genes, SLC40A1, as associated with hemochromatosis Type I and Type 4, iron ion transmembrane transporter activity, and its related pathways include mineral absorption and insulin receptor recycling.
+
+
+
+
+<a href="https://public.tableau.com/profile/janis5126#!/vizhome/monDecBarChart/monDecBarChart?publish=yes" target="_blank">monotonically increasing fold change values-iron not included</a>
+
+![monotonically increasing fold changes](./images/monDecrFCsGSE152418.png)
+
+
+We already have this chart, because it is the monotonically increasing genes from least to most severe grades of COVID-19, except that iron was added to the data set and coincidentally not in this chart because its three genes are split between the monotonically decreasing and the genes nonmonotonic. Look at the genes that are higher in the least severe case and dramatically lower in the most severe case. Most are hormones, but one is a fish oil gene and a couple of vitamin B12 genes that aren't dramatically higher in the moderate compared to the ICU grade of COVID-19. Estrogen, progesterone, and testosterone are gender related hormones. The testosterone gene GNRH1 is produced in the hypothalamus which lies in front of the pituitary gland that produces estrogen and progesterone. Synthetic progesterone is consumed when eating legumes and yams. Adrenaline is the sympathetic hormone produced by the adrenal glands and released in times of extreme stress or fight or flight threats to personal safety. If you explore the chart further you will see that TNF is a corticosteroid and vitamin C gene that is dramatically higher in moderate cases than in ICU cases of COVID-19. 
 
 
 
